@@ -21,7 +21,7 @@ pub mod world_pos;
 pub mod prelude {
     pub use crate::tracker::{PGEditorTrackerPlugin, Undo, Redo, UndoMessage, RedoMessage, Changes, Change, ChangesSet};
     pub use crate::box_select::{BoxSelectController, box_select_controller, box_select_changed, BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin};
-    pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushFinal, BrushStart, BrushSettings, Brush, PGEditorBrushSelectPlugin};
+    pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart, Brush, PGEditorBrushSelectPlugin, BrushType};
     pub use crate::world_pos::WorldPos;
     pub use crate::PGEditorToolsPlugin;
 }
