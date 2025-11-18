@@ -1,0 +1,50 @@
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+# rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]
+
+rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold", "-Zshare-generics=y", "-Zthreads=8"]
+
+
+# [target.x86_64-unknown-linux-gnu]
+# linker = "clang"
+# rustflags = [
+#   "-Clink-arg=-fuse-ld=mold",
+#   "-Zshare-generics=y",
+#   "-Zthreads=8",
+# ]
+rustdocflags = [
+    "-C",
+    "link-arg=-fuse-ld=/usr/bin/mold",
+    # Nightly
+    "-Zshare-generics=y",
+    "-Zthreads=8",
+]
+
+# [unstable]
+# codegen-backend = true
+
+[profile]
+incremental = true
+
+# [profile.dev] // commented out for mac
+# codegen-backend = "cranelift"
+# debug = "line-tables-only"
+
+[profile.dev.package."*"]
+codegen-backend = "llvm"
+
+[profile.test.package."*"]
+codegen-backend = "llvm"
+
+[profile.release]
+codegen-backend = "llvm"
+
+[profile.web]
+codegen-backend = "llvm"
+
+# [build]
+# # Requires setting `CARGO=1` or it breaks `Bevy CLI`: https://github.com/TheBevyFlock/bevy_cli/issues/429
+rustc-wrapper = "/home/patrick/.cargo/bin/sccache"
+# # Using a global target dir allows all projects to share incremental compilation results,
+# # vastly speeding up cold-compilation of new projects.
+# target-dir = "/home/patrick/.cargo/global-target"
