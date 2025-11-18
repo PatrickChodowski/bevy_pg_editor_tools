@@ -1,11 +1,9 @@
 use bevy::color::palettes::tailwind::BLUE_500;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy_enhanced_input::prelude::Cancel;
-use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use std::f32::consts::{FRAC_PI_2, TAU};
+use std::f32::consts::FRAC_PI_2;
 use bevy_enhanced_input::prelude::*;
-use bevy::ecs::system::SystemState;
 use dyn_clone::DynClone;
 
 use crate::prelude::WorldPos;
@@ -17,6 +15,7 @@ impl Plugin for PGEditorBrushSelectPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_input_context::<BrushSelectController>()
+        .insert_resource(BrushSettings::default())
         .add_message::<BrushStart>()
         .add_message::<BrushDone>()
         .add_observer(start_brush)
@@ -39,6 +38,14 @@ pub struct BrushSettings {
     pub radius: f32,
     pub typ: Box<dyn BrushType>
 }
+impl Default for BrushSettings {
+    fn default() -> Self {
+        Self {
+            radius: 30.0,
+            typ: Box::new(NothingBrush)            
+        }
+    }
+}
 
 
 fn brush_started(
@@ -47,20 +54,6 @@ fn brush_started(
     world.resource_scope(|_world: &mut World, mut brush: Mut<Brush>| {
         brush.typ.started(_world);
     });
-
-    // let mut system_state: SystemState<(
-    //     Single<&mut Brush>,
-    // )> = SystemState::new(world);
-
-    // let mut brushes = system_state.get_mut(world);
-
-    // brushes.0.typ.apply(world);
-
-
-    // world.resource_scope(f)
-    // let Ok(brush) = query.single(&world) else {return;};
-    // brush.typ.apply(world);
-
 }
 
 fn brush_apply(
@@ -79,6 +72,8 @@ fn brush_final(
     world.resource_scope(|_world: &mut World, mut brush: Mut<Brush>| {
         brush.typ.done(_world);
     });
+
+    world.remove_resource::<Brush>();
 }
 
 
@@ -159,28 +154,25 @@ fn start_brush(
 }
 
 fn update_brush(
-    _trigger:       On<Ongoing<BrushSelectUpdate>>,
-    input_data:     Res<WorldPos>,
-    mut query:      Query<(&mut Transform, &mut BrushMarker)>,
-    mut brush:      ResMut<Brush>
+    _trigger:               On<Ongoing<BrushSelectUpdate>>,
+    input_data:             Res<WorldPos>,
+    mut brush_transform:    Single<&mut Transform, With<BrushMarker>>,
+    mut brush:              ResMut<Brush>
 ){
     let Some(world_pos) = input_data.get() else {return;};
-    let Ok((mut transform, brushmarker)) = query.single_mut() else {return;};
     if world_pos.xz() != brush.loc.xz(){
         brush.loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
-        transform.translation = brush.loc;
+        brush_transform.translation = brush.loc;
     }
-
 }
 
 fn end_brush(
     _trigger:       On<Cancel<BrushSelectUpdate>>,
     mut commands:   Commands,
-    query:          Single<(Entity, &BrushMarker)>
+    brush_entity:   Single<Entity, With<BrushMarker>>,
 ){
-    let (brush_entity, brush) = query.into_inner();
     commands.write_message(BrushDone);
-    commands.entity(brush_entity).despawn();
+    commands.entity(*brush_entity).despawn();
 }
 
 #[derive(Message)]
