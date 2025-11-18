@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use std::f32::consts::{FRAC_PI_2, TAU};
 use bevy_enhanced_input::prelude::*;
 use bevy::ecs::system::SystemState;
+use dyn_clone::DynClone;
 
 use crate::prelude::WorldPos;
 
@@ -65,7 +66,6 @@ fn brush_started(
 fn brush_apply(
     world:     &mut World,
 ){
-
     world.resource_scope(|_world: &mut World, mut brush: Mut<Brush>| {
         let radius = brush.radius;
         let loc = brush.loc;
@@ -121,14 +121,15 @@ fn start_brush(
     input_data:        Res<WorldPos>,
     mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
-    mut materials:     ResMut<Assets<StandardMaterial>>
+    mut materials:     ResMut<Assets<StandardMaterial>>,
+    brush_settings:    Res<BrushSettings>
 ){
     let Some(world_pos) = input_data.get() else {return;};
     let loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
     let brush = Brush{
-            loc, 
-            radius: 30.0, 
-            typ: Box::new(NothingBrush)
+        loc, 
+        radius: brush_settings.radius, 
+        typ: brush_settings.typ.clone()
     };
     commands.insert_resource(brush);
     commands.spawn((
@@ -210,13 +211,15 @@ pub fn brush_changed(
     }
 }
 
-pub trait BrushType:  Send + Sync + 'static {
+
+pub trait BrushType:  Send + Sync + DynClone + 'static {
     fn started(&mut self, world:&mut World){}
     fn apply(&mut self, world: &mut World, loc: Vec3, radius: f32){}
     fn done(&mut self, world: &mut World){}
 }
+dyn_clone::clone_trait_object!(BrushType);
 
-
+#[derive(Clone)]
 pub struct NothingBrush;
 
 impl BrushType for NothingBrush {
