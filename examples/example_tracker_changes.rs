@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
 
-use bevy_pg_editor_tools::prelude::{TrackerChange, Changes};
+use bevy_pg_editor_tools::prelude::{Change, Changes};
 
 
 
@@ -21,7 +21,7 @@ impl ChangeSpawn {
     }
 }
 
-impl TrackerChange for ChangeSpawn {
+impl Change for ChangeSpawn {
     fn undo(
         &mut self, 
         world:      &mut World
@@ -68,7 +68,7 @@ impl ChangeDespawn {
 }
 
 
-impl TrackerChange for ChangeDespawn {
+impl Change for ChangeDespawn {
     fn undo(
         &mut self, 
         world:      &mut World
@@ -122,7 +122,7 @@ impl ChangeTransform {
 }
 
 
-impl TrackerChange for ChangeTransform {
+impl Change for ChangeTransform {
     fn undo(
         &mut self, 
         world:      &mut World
