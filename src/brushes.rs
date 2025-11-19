@@ -14,7 +14,6 @@ pub struct PGEditorBrushSelectPlugin;
 impl Plugin for PGEditorBrushSelectPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_input_context::<BrushSelectController>()
         .insert_resource(BrushSettings::default())
         .add_message::<BrushStart>()
         .add_message::<BrushDone>()
@@ -41,7 +40,7 @@ pub struct BrushSettings {
 impl Default for BrushSettings {
     fn default() -> Self {
         Self {
-            radius: 30.0,
+            radius: 10.0,
             typ: Box::new(NothingBrush)            
         }
     }
@@ -128,7 +127,7 @@ fn start_brush(
     };
     commands.insert_resource(brush);
     commands.spawn((
-        Mesh3d(meshes.add(Circle::new(30.0))),
+        Mesh3d(meshes.add(Circle::new(brush_settings.radius))),
         MeshMaterial3d(materials.add(Color::from(BLUE_500).with_alpha(0.4))),
         Transform::from_xyz(world_pos.x, world_pos.y + 1.0, world_pos.z)
                   .with_rotation(Quat::from_rotation_x(-FRAC_PI_2)),
@@ -216,13 +215,13 @@ pub struct NothingBrush;
 
 impl BrushType for NothingBrush {
     fn started(&mut self, world:&mut World) {
-        info!("Started nothingbrush");
+        // info!("Started nothingbrush");
     }
     fn apply(&mut self, world: &mut World, loc: Vec3, radius: f32) {
-        info!("apply nothingbrush");
+        // info!("apply nothingbrush");
     }
 
     fn done(&mut self, world: &mut World) {
-        info!("Done nothingbrush");
+        // info!("Done nothingbrush");
     }
 }
