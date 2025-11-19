@@ -1,4 +1,3 @@
-#![feature(box_into_inner)]
 
 use bevy::prelude::*;
 
