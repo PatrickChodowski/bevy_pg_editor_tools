@@ -85,7 +85,7 @@ pub fn brush_select_controller() -> impl Bundle {
         Actions::<BrushSelectController>::spawn(
             SpawnWith(|context: &mut ActionSpawner<_>| {
             let member1 = context
-                .spawn((Action::<BrushSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyB]))
+                .spawn((Action::<BrushSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyJ]))
                 .id();
             let member2 = context
                 .spawn((Action::<BrushSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Left]))
@@ -125,6 +125,7 @@ fn start_brush(
         radius: brush_settings.radius, 
         typ: brush_settings.typ.clone()
     };
+
     commands.insert_resource(brush);
     commands.spawn((
         Mesh3d(meshes.add(Circle::new(brush_settings.radius))),
@@ -153,7 +154,7 @@ fn start_brush(
 }
 
 fn update_brush(
-    _trigger:               On<Ongoing<BrushSelectUpdate>>,
+    _trigger:               On<Fire<BrushSelectUpdate>>,
     input_data:             Res<WorldPos>,
     mut brush_transform:    Single<&mut Transform, With<BrushMarker>>,
     mut brush:              ResMut<Brush>
