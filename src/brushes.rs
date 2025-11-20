@@ -116,8 +116,13 @@ fn start_brush(
     mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
     mut materials:     ResMut<Assets<StandardMaterial>>,
-    brush_settings:    Res<BrushSettings>
+    brush_settings:    Res<BrushSettings>,
+    brushes:           Query<Entity, With<BrushMarker>>
 ){
+    for brush_entity in brushes.iter(){
+        commands.entity(brush_entity).despawn();
+    }
+
     let Some(world_pos) = input_data.get() else {return;};
     let loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
     let brush = Brush{
