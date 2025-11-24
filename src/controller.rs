@@ -1,9 +1,13 @@
 use bevy::prelude::*;
+use bevy::tasks::IoTaskPool;
+use bevy::platform::collections::HashMap;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::rotate_point_2d;
 use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh};
-use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData};
+use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static};
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode, EditorSettings};
@@ -33,11 +37,75 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(navmesh_generation)
         .add_observer(toggle_multi_ghost)
         .add_observer(unghost_all)
+        .add_observer(save_scene)
         ;
     }
 }
 
 
+fn save_scene(
+    _trigger: On<Fire<SaveScene>>,
+    current_chunk: Res<CurrentChunk>,
+    objects: Query<
+        (
+            &Transform,
+            &Name,
+            Option<&Markee>,
+            Option<&Spawner>,
+            Option<&Marker>,
+        ),
+        Or<(With<Static>, With<Ghost>, With<EditorAsset>)>,
+    >, // All of it Just in case :)
+) {
+    info!(
+        "[EDITOR] save scene for {:?} {:?}",
+        current_chunk.chunk_id, current_chunk.map_name
+    );
+
+    let mut sods: HashMap<Name, Vec<SceneObjectData>> = HashMap::new();
+    for (transform, name, maybe_markee, maybe_spawner, maybe_marker) in objects.iter() {
+        if maybe_markee.is_some() {
+            continue;
+        }
+        let mut option: Option<String> = None;
+        if let Some(spawner) = maybe_spawner {
+            option = spawner.option.clone();
+        }
+        // if let Some(marker) = maybe_marker {
+        //     match marker.typ {
+        //         _ => {}
+        //     }
+        // }
+
+        let sod = SceneObjectData {
+            location: transform.translation,
+            rotation: transform.rotation.to_euler(EulerRot::XYZ).into(),
+            scale: transform.scale,
+            option,
+        };
+        sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
+    }
+    let filename = format!(
+        "./assets/maps/{}/{}_{}.scene.json",
+        current_chunk.map_name, current_chunk.map_name, current_chunk.chunk_id
+    );
+
+    info!("[EDITOR] Saving to file {}", filename);
+    let sd = SceneData {
+        map_name: current_chunk.map_name.clone(),
+        chunk_id: current_chunk.chunk_id.clone(),
+        objects: sods,
+    };
+
+    IoTaskPool::get()
+        .spawn(async move {
+            let f = File::create(&filename).ok().unwrap();
+            let mut writer = BufWriter::new(f);
+            let _res = serde_json::to_writer_pretty(&mut writer, &sd);
+            let _res = writer.flush();
+        })
+        .detach();
+}
 
 
 #[derive(Component, Reflect)]
