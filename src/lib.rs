@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use bevy_pg_scenes::prelude::{Spawner, Marker};
+use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static,TerrainChunk};
+use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player};
+use bevy_enhanced_input::prelude::ContextActivity;
 
 pub mod assets_panel;
 pub mod box_select;
@@ -14,16 +16,16 @@ pub mod planes;
 pub mod vertex;
 pub mod terrain_brushes;
 
-
 use assets_panel::PGEditorAssetsPanelPlugin;
-use brushes::PGEditorBrushSelectPlugin;
+use brushes::{PGEditorBrushSelectPlugin, BrushSelectController};
 use box_select::PGEditorBoxSelectPlugin;
-use controller::PGEditorControllerPlugin;
-use ghost::PGEditorGhostPlugin;
+use controller::{PGEditorControllerPlugin, EditorController};
+use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorSettings, EditorGhostTransformMemory};
+use planes::PlaneToEdit;
 use thumbnails::PGEditorThumbnailsPlugin;
-use tracker::PGEditorTrackerPlugin;
+use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use ui_controls::PGEditorControlsDisplayPlugin;
-use vertex::PGEditorVertexPlugin;
+use vertex::{PGEditorVertexPlugin};
 
 
 pub struct PGEditorPlugin{
@@ -57,10 +59,171 @@ impl Plugin for PGEditorPlugin {
                 }
             )
         )
+        .add_plugins(MeshPickingPlugin::default())
+        .insert_resource(MeshPickingSettings {
+            require_markers: true,
+            // When set to true ray casting will only consider cameras marked with MeshPickingCamera and entities marked with Pickable. false by default.
+            ..default()
+        })
+        .add_systems(OnEnter(GameStatePlay::Editor), init_editor)
+        .add_systems(OnExit(GameStatePlay::Editor), exit_editor)
         ;
     }
 }
 
+
+fn init_editor(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    statics: Query<
+        (Entity, &Name),
+        (
+            With<Static>,
+            Without<Spawner>,
+            Without<Marker>,
+            Without<Markee>,
+        ),
+    >,
+    editor: Query<Entity, With<EditorController>>,
+    brush: Query<Entity, With<BrushSelectController>>,
+    mut camera: Query<(Entity, &mut MainCamera)>,
+    mut spawnees: Query<&mut Visibility, With<Spawnee>>,
+    spawners: Query<(Entity, &Spawner, &Name)>,
+    markers: Query<(Entity, &Marker, &Name)>,
+    terrains: Query<Entity, With<TerrainChunk>>,
+    ghost_settings: Res<EditorGhostSettings>
+) {
+    info!("[EDITOR] Entering Editor");
+    for terrain_entity in terrains.iter() {
+        commands.entity(terrain_entity).insert(PlaneToEdit::dummy());
+    }
+
+    let Ok(entity) = brush.single() else { return };
+    commands
+        .entity(entity)
+        .insert(ContextActivity::<BrushSelectController>::ACTIVE);
+
+    let Ok((camera_entity, mut camera_data)) = camera.single_mut() else {
+        return;
+    };
+    commands.entity(camera_entity).insert(MeshPickingCamera);
+    camera_data.set_dev(&mut commands, camera_entity);
+
+    let Ok(editor_entity) = editor.single() else {
+        return;
+    };
+    commands
+        .entity(editor_entity)
+        .insert(ContextActivity::<EditorController>::ACTIVE);
+
+    for (entity, name) in statics.iter() {
+        commands
+            .entity(entity)
+            .insert((Pickable::default(), EditorAsset::Asset(name.to_string())));
+    }
+
+    commands.insert_resource(EditorSettings::default());
+    commands.insert_resource(Changes::new());
+
+    for mut vis in spawnees.iter_mut() {
+        *vis = Visibility::Hidden;
+    }
+
+    for (spawner_entity, spawner, name) in spawners.iter() {
+        let (mesh, mat) = (ghost_settings.spawner_mesh)(spawner.id, &mut meshes, &mut materials);
+        commands.entity(spawner_entity).insert((
+            Mesh3d(mesh),
+            MeshMaterial3d(mat),
+            Pickable::default(),
+            EditorAsset::Spawner(name.to_string()),
+        ));
+    }
+
+    for (marker_entity, marker, name) in markers.iter() {
+        let (mesh, mat) = (ghost_settings.marker_mesh)(marker.id, &mut meshes, &mut materials);
+        commands.entity(marker_entity).insert((
+            Mesh3d(mesh),
+            MeshMaterial3d(mat),
+            Pickable::default(),
+            EditorAsset::Marker(name.to_string()),
+        ));
+    }
+    
+}
+
+fn exit_editor(
+    mut commands: Commands,
+    statics: Query<Entity, With<Static>>,
+    mut camera: Query<(Entity, &mut Transform, &mut MainCamera), Without<Player>>,
+    editor: Query<Entity, With<EditorController>>,
+    brush: Query<Entity, With<BrushSelectController>>,
+    mut spawnees: Query<&mut Visibility, With<Spawnee>>,
+    spawners_markers: Query<Entity, Or<(With<Spawner>, With<Marker>)>>,
+    player: Query<&Transform, With<Player>>,
+    terrains: Query<Entity, With<TerrainChunk>>,
+) {
+    info!("[EDITOR] Exit Editor");
+
+    for terrain_entity in terrains.iter() {
+        commands.entity(terrain_entity).remove::<PlaneToEdit>();
+    }
+    let Ok((camera_entity, mut camera_transform, mut camera_data)) = camera.single_mut() else {
+        return;
+    };
+    commands.entity(camera_entity).remove::<MeshPickingCamera>();
+    let Ok(player_transform) = player.single() else {
+        return;
+    };
+    camera_data.set_player(
+        &mut commands,
+        camera_entity,
+        &mut camera_transform,
+        player_transform.translation,
+    );
+
+    let Ok(editor_entity) = editor.single() else {
+        return;
+    };
+    commands
+        .entity(editor_entity)
+        .insert(ContextActivity::<EditorController>::INACTIVE);
+
+    let Ok(brush_entity) = brush.single() else {
+        return;
+    };
+    commands
+        .entity(brush_entity)
+        .insert(ContextActivity::<BrushSelectController>::INACTIVE);
+
+    for entity in statics.iter() {
+        commands.entity(entity).remove::<Pickable>();
+        commands.entity(entity).remove::<EditorAsset>();
+    }
+
+    commands.remove_resource::<EditorSettings>();
+    commands.remove_resource::<Changes>();
+    commands.remove_resource::<CurrentTransformChanges>();
+    commands.remove_resource::<EditorGhostTransformMemory>();
+
+    for mut vis in spawnees.iter_mut() {
+        *vis = Visibility::Visible;
+    }
+
+    for spawner_marker_entity in spawners_markers.iter() {
+        commands
+            .entity(spawner_marker_entity)
+            .remove::<Visibility>();
+        commands.entity(spawner_marker_entity).remove::<Mesh3d>();
+        commands
+            .entity(spawner_marker_entity)
+            .remove::<MeshMaterial3d<StandardMaterial>>();
+        commands.entity(spawner_marker_entity).remove::<Pickable>();
+        commands
+            .entity(spawner_marker_entity)
+            .remove::<EditorAsset>();
+    }
+}
 
 
 pub mod prelude {
