@@ -3,10 +3,10 @@ use bevy::ecs::spawn::SpawnWith;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::Cancel;
 use bevy_enhanced_input::prelude::*;
+use bevy_pg_core::prelude::PointerData;
 use bevy::color::palettes::tailwind::*;
 use libm::fabsf;
 
-use crate::world_pos::WorldPos;
 
 
 pub struct PGEditorBoxSelectPlugin;
@@ -99,9 +99,9 @@ fn start_boxselect(
     mut commands:   Commands,
     mut meshes:     ResMut<Assets<Mesh>>,
     mut materials:  ResMut<Assets<StandardMaterial>>,
-    input_data:     Res<WorldPos>
+    input_data:     Res<PointerData>
 ){
-    let Some(world_pos) = input_data.get() else {return;};
+    let Some(world_pos) = input_data.world_pos else {return};
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::default())),
         MeshMaterial3d(materials.add(Color::from(ORANGE_600).with_alpha(0.4))),
@@ -115,10 +115,10 @@ fn start_boxselect(
 
 fn update_boxselect(
     _trigger:   On<Fire<BoxSelectUpdate>>,
-    input_data: Res<WorldPos>,
+    input_data: Res<PointerData>,
     query:      Single<(&mut Transform, &mut BoxSelect)>
 ){
-    let Some(world_pos) = input_data.get() else {return;};
+    let Some(world_pos) = input_data.world_pos else {return};
     let (mut transform, mut box_select) = query.into_inner();
 
     let new_x = (world_pos.x + box_select.start.x) / 2.0;

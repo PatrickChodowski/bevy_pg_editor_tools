@@ -1025,11 +1025,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_pg_core"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_enhanced_input",
+ "libm",
+ "log",
+ "serde",
+]
+
+[[package]]
 name = "bevy_pg_editor_tools"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_enhanced_input",
+ "bevy_pg_core",
  "dyn-clone",
  "libm",
  "log",
