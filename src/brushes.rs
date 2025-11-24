@@ -13,7 +13,7 @@ use rand::seq::IndexedRandom;
 use bevy_pg_nav::prelude::NavMesh;
 
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
-use crate::ghost::{Ghost, EditorAsset, editor_asset_bundle};
+use crate::ghost::{EditorAsset, EditorGhostSettings, Ghost, editor_asset_bundle};
 
 
 pub struct PGEditorBrushSelectPlugin;
@@ -270,6 +270,17 @@ impl BrushType for ScatterBrush {
         let locs: Vec<Vec2> = pack_circles(self.radius_inner, radius, loc.x, loc.z);
         let threshold = self.radius_inner*2.0*self.radius_inner*2.0;
 
+        let mut system_state: SystemState<(
+                ResMut<Assets<Mesh>>,
+                ResMut<Assets<StandardMaterial>>,
+                Res<AssetServer>,
+                Commands,
+                Res<NavMesh>,
+                Res<EditorGhostSettings>
+            )> = SystemState::new(world);
+
+        let (mut meshes, mut materials, ass, mut commands, navmesh, ghost_settings) = system_state.get_mut(world);
+
         for loc in locs.iter(){
             let uloc = (loc.x as u32, loc.y as u32);
 
@@ -299,16 +310,6 @@ impl BrushType for ScatterBrush {
 
             let mut pos = Vec3::new(loc.x+nudge_x, loc.y, loc.y+nudge_z);
 
-            let mut system_state: SystemState<(
-                ResMut<Assets<Mesh>>,
-                ResMut<Assets<StandardMaterial>>,
-                Res<AssetServer>,
-                Commands,
-                Res<NavMesh>
-            )> = SystemState::new(world);
-
-            let (mut meshes, mut materials, ass, mut commands, navmesh) = system_state.get_mut(world);
-
             if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
                 pos.y = height;
             }
@@ -321,17 +322,16 @@ impl BrushType for ScatterBrush {
                     &ass,
                     &mut meshes,
                     &mut materials,
-                    &transform
+                    &transform,
+                    &ghost_settings
                 )
             ).id();
 
             commands.entity(entity).remove::<Ghost>();        
             let change_spawn = ChangeSpawn::new(entity, asset, transform);
             self.data.insert(uloc, StrokeTest::Positive(change_spawn));
-
-            system_state.apply(world);
-
         }
+        system_state.apply(world);
         
     }
 

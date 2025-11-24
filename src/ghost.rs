@@ -14,15 +14,31 @@ use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
 use crate::assets_panel::EditorAssetPanel;
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn, CurrentTransformChanges};
 
+pub struct PGEditorGhostPlugin{
+    pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
+    pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
+    pub markers_mapping: fn(name: String) -> Marker,
+    pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner
+}
 
-use crate::maps::spawners::{spawner_mesh, spawners_mapping};
-use crate::maps::markers::{marker_mesh, markers_mapping};
+#[derive(Resource)]
+pub struct EditorGhostSettings {
+    pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
+    pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
+    pub markers_mapping: fn(name: String) -> Marker,
+    pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner
+}
 
-pub struct PGEditorGhostPlugin;
 
 impl Plugin for PGEditorGhostPlugin {
     fn build(&self, app: &mut App) {
         app
+        .insert_resource(EditorGhostSettings{
+            spawner_mesh: self.spawner_mesh,
+            marker_mesh: self.marker_mesh,
+            markers_mapping: self.markers_mapping,
+            spawners_mapping: self.spawners_mapping
+        })
         .add_message::<EditorSpawnAsset>()
         .add_systems(OnExit(GameStatePlay::Editor), unghost_all)
         .add_systems(OnEnter(GameStatePlay::Editor), init)
@@ -269,9 +285,9 @@ fn add_ghost(
         }
     }
 
-    commands.entity(trigger.entity)
-    .observe(ghost_transform_out)
-    .observe(ghost_transform_hover)
+    // commands.entity(trigger.entity)
+    // .observe(ghost_transform_out)
+    // .observe(ghost_transform_hover)
     ;
     
 }
@@ -351,7 +367,8 @@ fn spawn_asset(
     mut meshes:     ResMut<Assets<Mesh>>,
     mut materials:  ResMut<Assets<StandardMaterial>>,
     pointer:        Res<PointerData>,
-    mut changes:    ResMut<Changes>
+    mut changes:    ResMut<Changes>,
+    ghost_settings: Res<EditorGhostSettings>
 ){
     let mut spawns = ChangesSet::new();
     for ev in event.read(){
@@ -401,14 +418,14 @@ fn spawn_asset(
         if let Some(translation) = translation {
             let mut transform = Transform::from_translation(translation).with_rotation(rotation).with_scale(scale);
 
-
             let entity = commands.spawn(
                 editor_asset_bundle(
                     ev.asset.clone(),
                     &ass,
                     &mut meshes,
                     &mut materials,
-                    &mut transform
+                    &mut transform,
+                    &ghost_settings
                 )
             ).id();
 
@@ -446,7 +463,8 @@ pub(super) fn editor_asset_bundle(
     ass:        &AssetServer,
     meshes:     &mut ResMut<Assets<Mesh>>,
     materials:  &mut ResMut<Assets<StandardMaterial>>,
-    transform:  &Transform
+    transform:  &Transform,
+    settings:   &Res<EditorGhostSettings>
 ) -> impl Bundle {
     
     let ghost_material: Handle<StandardMaterial>;
@@ -470,8 +488,8 @@ pub(super) fn editor_asset_bundle(
         }
 
         EditorAsset::Spawner(spawner_name) => {
-            let spawner = spawners_mapping(spawner_name.clone(), None);
-            let (spawner_mesh, spawner_mat) = spawner_mesh(spawner.id, meshes, materials);
+            let spawner = (settings.spawners_mapping)(spawner_name.clone(), None);
+            let (spawner_mesh, spawner_mat) = (settings.spawner_mesh)(spawner.id, meshes, materials);
             mesh = spawner_mesh;
             material = spawner_mat;
             ghost_material = material.clone();
@@ -479,8 +497,8 @@ pub(super) fn editor_asset_bundle(
         }
 
         EditorAsset::Marker(marker_name) => {
-            let marker = markers_mapping(marker_name.clone());
-            let (marker_mesh, marker_mat) = marker_mesh(marker.id, meshes, materials);
+            let marker = (settings.markers_mapping)(marker_name.clone());
+            let (marker_mesh, marker_mat) = (settings.marker_mesh)(marker.id, meshes, materials);
             mesh = marker_mesh;
             material = marker_mat;
             ghost_material = material.clone();
@@ -501,42 +519,6 @@ pub(super) fn editor_asset_bundle(
     );
 
     return bundle;
-}
-
-
-
-fn ghost_transform_hover(
-    trigger:         On<Pointer<Move>>,
-    mut query:       Query<(&mut Text, &TextSection)>,
-    objs:            Query<(&Transform, &Name)> 
-){
-    for (mut txt, section) in query.iter_mut(){
-        match section {
-            TextSection::Hover => {
-            let Ok((transform, name)) = objs.get(trigger.entity) else {return};
-            txt.0 = format!("{}: ({:.0}, {:.0}, {:.0})", 
-                                name, 
-                                transform.translation.x, 
-                                transform.translation.y, 
-                                transform.translation.z);
-            }
-            _ => {}
-        }
-    }
-}
-
-fn ghost_transform_out(
-    _trigger:         On<Pointer<Out>>,
-    mut query:       Query<(&mut Text, &TextSection)>,
-){
-    for (mut txt, section) in query.iter_mut(){
-        match section {
-            TextSection::Hover => {
-                txt.0 = format!("");
-            }
-            _ => {}
-        }
-    }
 }
 
 fn ghost_transform_drag_start(
@@ -700,6 +682,7 @@ fn ghost_transform_drag(
 fn add_editor_asset(
     trigger: On<Add, EditorAsset>,
     query: Query<(&EditorAsset, Option<&Spawner>, Option<&Marker>)>,
+    ghost_settings: Res<EditorGhostSettings>,
     mut commands: Commands
 ){
     let entity = trigger.entity;
@@ -712,14 +695,49 @@ fn add_editor_asset(
         EditorAsset::Spawner(spawner_name) => {
             if let Some(_spawner) = maybe_spawner {} else{
                 // Insert generic spawner only if there is no spawner component yet;
-                commands.entity(entity).insert(spawners_mapping(spawner_name.clone(), None));
+                commands.entity(entity).insert((ghost_settings.spawners_mapping)(spawner_name.clone(), None));
             }
         }
         EditorAsset::Marker(marker_name) => {
             if let Some(_marker) = maybe_marker {} else{
                 // Insert generic marker only if there is no spawner component yet;
-                commands.entity(entity).insert(markers_mapping(marker_name.clone()));
+                commands.entity(entity).insert((ghost_settings.markers_mapping)(marker_name.clone()));
             }
         }
     }
 }
+
+
+// fn ghost_transform_hover(
+//     trigger:         On<Pointer<Move>>,
+//     mut query:       Query<(&mut Text, &TextSection)>,
+//     objs:            Query<(&Transform, &Name)> 
+// ){
+//     for (mut txt, section) in query.iter_mut(){
+//         match section {
+//             TextSection::Hover => {
+//             let Ok((transform, name)) = objs.get(trigger.entity) else {return};
+//             txt.0 = format!("{}: ({:.0}, {:.0}, {:.0})", 
+//                                 name, 
+//                                 transform.translation.x, 
+//                                 transform.translation.y, 
+//                                 transform.translation.z);
+//             }
+//             _ => {}
+//         }
+//     }
+// }
+
+// fn ghost_transform_out(
+//     _trigger:         On<Pointer<Out>>,
+//     mut query:       Query<(&mut Text, &TextSection)>,
+// ){
+//     for (mut txt, section) in query.iter_mut(){
+//         match section {
+//             TextSection::Hover => {
+//                 txt.0 = format!("");
+//             }
+//             _ => {}
+//         }
+//     }
+// }

@@ -5,9 +5,10 @@ use bevy::picking::pointer::PointerId;
 use bevy::picking::hover::HoverMap;
 use bevy::window::PrimaryWindow;
 use bevy_enhanced_input::prelude::*;
-use bevy_pg_editor_tools::prelude::{WorldPos, PGEditorToolsPlugin, PGEditorBrushSelectPlugin, BrushSelectController, BrushSettings, brush_select_controller};
-use bevy_pg_terrain_editor_tools::noises::Noise;
-use bevy_pg_terrain_editor_tools::prelude::{HeightBrushType, ColorBrushType, PlaneToEdit, SpawnVertices, 
+use bevy_pg_core::prelude::PointerData;
+use bevy_pg_editor_tools::prelude::{PGEditorPlugin, PGEditorBrushSelectPlugin, BrushSelectController, BrushSettings, brush_select_controller};
+use bevy_pg_editor_tools::noises::Noise;
+use bevy_pg_editor_tools::prelude::{HeightBrushType, ColorBrushType, PlaneToEdit, SpawnVertices, 
     TerrainColorBrush, TerrainEditorVertexPlugin, TerrainHeightBrush, 
     TerrainVertexController, plane_mesh, terrain_vertex_controller
 };
@@ -20,7 +21,7 @@ fn main() {
         .add_input_context::<TerrainVertexController>()
         .insert_resource(AmbientLight{color: Color::from(WHITE), brightness: 900.0, ..default()})
         .add_plugins(TerrainEditorVertexPlugin::new(1.0))
-        .add_plugins(PGEditorToolsPlugin)
+        .add_plugins(PGEditorPlugin{})
         .add_plugins(PGEditorBrushSelectPlugin)
         .add_systems(Startup, init)
         .add_systems(Update, hover_plane)
@@ -103,9 +104,9 @@ fn hover_plane(
     camera:             Single<(&Camera, &GlobalTransform), With<Camera3d>>,
     nodes:              Query<Entity, With<Node>>,
     planes:             Query<(&PlaneToEdit, &Transform)>,
-    mut worldpos:       ResMut<WorldPos>
+    mut pointer:       ResMut<PointerData>
 ) {
-    worldpos.reset();
+    pointer.reset();
     let mut any_ui_hit: Option<Entity> = None;
     let hit_data = hovermap.0.get(&PointerId::Mouse).unwrap();
 
@@ -133,7 +134,7 @@ fn hover_plane(
             if let Some(distance) = plane.ray_intersection(plane_transform.translation, plane_transform.scale, ray_origin, ray_dir){
                 if distance > 0.0 {
                     let position: Vec3 = (ray_origin + ray_dir * distance).into();
-                    worldpos.set(position);
+                    pointer.world_pos = Some(position);
                     return;
                 }
             }

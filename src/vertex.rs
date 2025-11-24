@@ -9,19 +9,19 @@ use bevy_enhanced_input::prelude::Press;
 
 use crate::planes::PlaneToEdit;
 
-pub struct TerrainEditorVertexPlugin {
+pub struct PGEditorVertexPlugin {
     pub vertex_radius: f32
 }
 
-impl TerrainEditorVertexPlugin {
+impl PGEditorVertexPlugin {
     pub fn new(vertex_radius: f32) -> Self {
-        TerrainEditorVertexPlugin {
+        PGEditorVertexPlugin {
             vertex_radius
         }
     }
 }
 
-impl Plugin for TerrainEditorVertexPlugin {
+impl Plugin for PGEditorVertexPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_systems(Startup, init)

@@ -1,18 +1,18 @@
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
+use bevy_pg_core::prelude::rotate_point_2d;
 use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh};
-use crate::planes::PlaneToEdit;
-use crate::terrain_brushes::{HeightBrushType, ColorBrushType, TerrainColorBrush, TerrainHeightBrush};
-use crate::vertex::SpawnVertices;
 use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData};
 
 use crate::brushes::{NothingBrush, BrushSettings, ScatterBrush};
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
+use crate::planes::PlaneToEdit;
+use crate::terrain_brushes::{HeightBrushType, ColorBrushType, TerrainColorBrush, TerrainHeightBrush};
+use crate::vertex::SpawnVertices;
 
 // use crate::input::controller::ToggleEditor;
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode, EditorSettings};
-use crate::tools::utils::rotate_point_2d;
 
 pub struct PGEditorControllerPlugin;
 
@@ -39,8 +39,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(navmesh_generation)
         .add_observer(toggle_multi_ghost)
         .add_observer(unghost_all)
-        .add_observer(toggle_brush)
-
         ;
     }
 }
@@ -56,16 +54,6 @@ pub fn editor_controller() -> impl Bundle {
         EditorController,
         actions!(
             EditorController[
-                (
-                    Action::<ChangeAnim>::new(),
-                    Press::default(),
-                    Bindings::spawn(
-                        Bidirectional::<Binding, Binding> {
-                            negative: KeyCode::Comma.into(), 
-                            positive: KeyCode::Period.into()
-                        }
-                    )
-                ),
                 (
                     Action::<ChangeValueScale>::new(),
                     Press::default(),
@@ -217,6 +205,10 @@ pub(super) struct SaveScene;
 #[derive(InputAction)]
 #[action_output(bool)]
 pub struct ToggleBrush;
+
+#[derive(InputAction)]
+#[action_output(bool)]
+pub struct ToggleEditor;
 
 #[derive(InputAction)]
 #[action_output(f32)]
@@ -534,51 +526,6 @@ fn toggle_snap_nav(
     mut ghost_settings: ResMut<EditorSettings>
 ){
     ghost_settings.snap_nav = !ghost_settings.snap_nav;
-}
-
-fn toggle_brush(
-    _trigger:    On<Fire<ToggleBrush>>,
-    mut commands: Commands,
-    mut bs:      ResMut<BrushSettings>,
-    mut editor_brushes: ResMut<EditorBrushes>,
-    terrain_chunks: Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>
-){
-
-    match *editor_brushes {
-        EditorBrushes::Trees => {*editor_brushes = EditorBrushes::Grass;}
-        EditorBrushes::Grass => {*editor_brushes = EditorBrushes::Rocks;}
-        EditorBrushes::Rocks => {*editor_brushes = EditorBrushes::Textures;}
-        EditorBrushes::Textures => {*editor_brushes = EditorBrushes::TerrainHeight;}
-        EditorBrushes::TerrainHeight => {*editor_brushes = EditorBrushes::TerrainColor;}
-        EditorBrushes::TerrainColor => {*editor_brushes = EditorBrushes::Trees;}
-    }
-    bs.radius = 30.0;
-    match *editor_brushes {
-        EditorBrushes::Trees => {
-            bs.typ = Box::new(ScatterBrush::trees())
-        }
-        EditorBrushes::Grass => {
-            bs.typ = Box::new(ScatterBrush::grass())
-        }
-        EditorBrushes::Rocks => {
-            bs.typ = Box::new(ScatterBrush::rocks())
-        }
-        EditorBrushes::Textures => {
-            bs.typ = Box::new(NothingBrush)
-        }
-        EditorBrushes::TerrainHeight => {
-            bs.typ = Box::new(TerrainHeightBrush{typ: HeightBrushType::Value(1.0), reselection: true});
-            for entity in terrain_chunks.iter(){
-                commands.trigger(SpawnVertices{plane_entity: entity});
-            }
-        }
-        EditorBrushes::TerrainColor => {
-            bs.typ = Box::new(TerrainColorBrush{typ: ColorBrushType::Value{clr: [0.5, 0.5, 0.5, 1.0]}});
-            for entity in terrain_chunks.iter(){
-                commands.trigger(SpawnVertices{plane_entity: entity});
-            }
-        }
-    }
 }
 
 fn delete_object(

@@ -3,7 +3,7 @@ use bevy::ecs::system::SystemState;
 use bevy_enhanced_input::prelude::*;
 use bevy::platform::collections::HashMap;
 
-use crate::ghost::{EditorAsset, editor_asset_bundle};
+use crate::ghost::{EditorAsset, EditorGhostSettings, editor_asset_bundle};
 pub struct PGEditorTrackerPlugin;
 
 
@@ -222,17 +222,19 @@ impl Change for ChangeSpawn {
             ResMut<Assets<Mesh>>,
             ResMut<Assets<StandardMaterial>>,
             Res<AssetServer>,
-            Commands
+            Commands,
+            Res<EditorGhostSettings>
         )> = SystemState::new(world);
 
-        let (mut meshes, mut materials, ass, mut commands) = system_state.get_mut(world);
+        let (mut meshes, mut materials, ass, mut commands, ghost_settings) = system_state.get_mut(world);
         let entity = commands.spawn(
             editor_asset_bundle(
                 self.asset.clone(),
                 &ass,
                 &mut meshes,
                 &mut materials,
-                &self.transform
+                &self.transform,
+                &ghost_settings
             )
         ).id();
         self.entity = entity;    
@@ -277,17 +279,19 @@ impl Change for ChangeDespawn {
             ResMut<Assets<Mesh>>,
             ResMut<Assets<StandardMaterial>>,
             Res<AssetServer>,
-            Commands
+            Commands,
+            Res<EditorGhostSettings>
         )> = SystemState::new(world);
 
-        let (mut meshes, mut materials, ass, mut commands) = system_state.get_mut(world);
+        let (mut meshes, mut materials, ass, mut commands, ghost_settings) = system_state.get_mut(world);
         let entity = commands.spawn(
             editor_asset_bundle(
                 self.asset.clone(),
                 &ass,
                 &mut meshes,
                 &mut materials,
-                &self.transform
+                &self.transform,
+                &ghost_settings
             )
         ).id();
         self.entity = entity;
