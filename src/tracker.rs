@@ -10,6 +10,7 @@ pub struct PGEditorTrackerPlugin;
 impl Plugin for PGEditorTrackerPlugin {
     fn build(&self, app: &mut App) {
         app
+        .insert_resource(Changes::new())
         .add_message::<UndoMessage>()
         .add_message::<RedoMessage>()
         .add_observer(on_undo)
