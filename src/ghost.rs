@@ -306,12 +306,12 @@ fn remove_ghost(
 
 
 #[derive(Resource, Debug)]
-pub(super) struct EditorGhostTransformMemory{
-    pub(super) rotation: Quat,
-    pub(super) scale:    Vec3
+pub struct EditorGhostTransformMemory{
+    pub rotation: Quat,
+    pub scale:    Vec3
 }
 impl EditorGhostTransformMemory {
-    pub(super) fn new(
+    pub fn new(
         rotation: Quat, 
         scale:    Vec3
     ) -> Self {

@@ -21,6 +21,7 @@ pub struct PGEditorBrushSelectPlugin;
 impl Plugin for PGEditorBrushSelectPlugin {
     fn build(&self, app: &mut App) {
         app
+        .add_input_context::<BrushSelectController>()
         .insert_resource(BrushSettings::default())
         .add_message::<BrushStart>()
         .add_message::<BrushDone>()
@@ -244,21 +245,21 @@ impl BrushType for NothingBrush {
 
 /*  Different brush types */
 #[derive(Clone)]
-enum StrokeTest {
+pub enum StrokeTest {
     Negative,
     Positive(ChangeSpawn)
 }
 
 #[derive(Clone)]
 pub struct ScatterBrush {
-    assets:       Vec<&'static str>,
-    radius_inner: f32,
-    chance:       f32,
-    scale:        (f32, f32),
-    rotation:     (f32, f32),
-    nudges:       (f32, f32),
-    data:         HashMap<(u32, u32), StrokeTest>,
-    locs:         Vec<Vec2>
+    pub assets:       Vec<&'static str>,
+    pub radius_inner: f32,
+    pub chance:       f32,
+    pub scale:        (f32, f32),
+    pub rotation:     (f32, f32),
+    pub nudges:       (f32, f32),
+    pub data:         HashMap<(u32, u32), StrokeTest>,
+    pub locs:         Vec<Vec2>
 }
 impl BrushType for ScatterBrush {
     fn started(&mut self, world:&mut World) {

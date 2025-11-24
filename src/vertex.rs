@@ -24,6 +24,7 @@ impl PGEditorVertexPlugin {
 impl Plugin for PGEditorVertexPlugin {
     fn build(&self, app: &mut App) {
         app
+        .add_input_context::<TerrainVertexController>()
         .add_systems(Startup, init)
         .insert_resource(VertexPluginSettings::new(
             self.vertex_radius

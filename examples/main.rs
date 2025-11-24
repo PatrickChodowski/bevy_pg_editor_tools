@@ -9,7 +9,7 @@ use bevy_pg_core::prelude::PointerData;
 use bevy_pg_editor_tools::prelude::{PGEditorPlugin, PGEditorBrushSelectPlugin, BrushSelectController, BrushSettings, brush_select_controller};
 use bevy_pg_editor_tools::noises::Noise;
 use bevy_pg_editor_tools::prelude::{HeightBrushType, ColorBrushType, PlaneToEdit, SpawnVertices, 
-    TerrainColorBrush, TerrainEditorVertexPlugin, TerrainHeightBrush, 
+    TerrainColorBrush, TerrainHeightBrush, 
     TerrainVertexController, plane_mesh, terrain_vertex_controller
 };
 
@@ -17,10 +17,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(EnhancedInputPlugin)
-        .add_input_context::<BrushSelectController>()
-        .add_input_context::<TerrainVertexController>()
         .insert_resource(AmbientLight{color: Color::from(WHITE), brightness: 900.0, ..default()})
-        .add_plugins(TerrainEditorVertexPlugin::new(1.0))
         .add_plugins(PGEditorPlugin{})
         .add_plugins(PGEditorBrushSelectPlugin)
         .add_systems(Startup, init)

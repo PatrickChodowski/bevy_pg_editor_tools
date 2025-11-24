@@ -66,11 +66,13 @@ impl Plugin for PGEditorPlugin {
 pub mod prelude {
     pub use crate::assets_panel::PGEditorAssetsPanelPlugin;
     pub use crate::box_select::{BoxSelectController, box_select_controller, box_select_changed, BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin};
-    pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart, Brush, PGEditorBrushSelectPlugin, BrushType, BrushSettings};
-    pub use crate::controller::PGEditorControllerPlugin;
-    pub use crate::ghost::PGEditorGhostPlugin;
+    pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
+         Brush, PGEditorBrushSelectPlugin, BrushType, BrushSettings, ScatterBrush, NothingBrush};
+    pub use crate::controller::{PGEditorControllerPlugin, editor_controller, EditorController, ToggleEditor, SaveScene, ToggleBrush};
+    pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, EditorSettings, Ghost, EditorAsset};
     pub use crate::thumbnails::PGEditorThumbnailsPlugin;
-    pub use crate::tracker::{PGEditorTrackerPlugin, Undo, Redo, UndoMessage, RedoMessage, Changes, Change, ChangesSet};
+    pub use crate::tracker::{PGEditorTrackerPlugin, Undo, Redo, UndoMessage,
+         RedoMessage, Changes, Change, ChangesSet, CurrentTransformChanges};
     pub use crate::ui_controls::PGEditorControlsDisplayPlugin;
     pub use crate::planes::{PlaneToEdit, plane_mesh};
     pub use crate::vertex::{SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, TerrainVertexController, VertexRefs, terrain_vertex_controller};

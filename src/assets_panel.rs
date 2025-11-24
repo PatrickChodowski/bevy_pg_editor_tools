@@ -168,7 +168,7 @@ fn clear(
 const LINE_HEIGHT: f32 = 21.;
 
 #[derive(Component)]
-pub(super) struct EditorAssetPanel;
+pub struct EditorAssetPanel;
 
 #[derive(Component)]
 struct AssetButton {
@@ -431,7 +431,7 @@ fn asset_button_pressed(
     }   
 }
 
-pub(super) fn list_assets() -> Vec<String>{
+pub fn list_assets() -> Vec<String>{
     let Ok(entries) = fs::read_dir("./assets/objects") else {return Vec::new();};
     let mut v: Vec<String> = Vec::new();
     for entry in entries {

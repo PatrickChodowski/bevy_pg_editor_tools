@@ -5,13 +5,7 @@ use bevy_pg_core::prelude::rotate_point_2d;
 use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh};
 use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData};
 
-use crate::brushes::{NothingBrush, BrushSettings, ScatterBrush};
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
-use crate::planes::PlaneToEdit;
-use crate::terrain_brushes::{HeightBrushType, ColorBrushType, TerrainColorBrush, TerrainHeightBrush};
-use crate::vertex::SpawnVertices;
-
-// use crate::input::controller::ToggleEditor;
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode, EditorSettings};
 
 pub struct PGEditorControllerPlugin;
@@ -195,12 +189,12 @@ pub fn editor_controller() -> impl Bundle {
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct TriggerThumbnails;
+pub struct TriggerThumbnails;
 
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct SaveScene;
+pub struct SaveScene;
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -385,7 +379,7 @@ fn change_value(
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct SpawnHelpDisplay;
+pub struct SpawnHelpDisplay;
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -413,19 +407,19 @@ struct SetYAxis;
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct SetYAxisOrigin;
+pub struct SetYAxisOrigin;
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct AllAxis;
+pub struct AllAxis;
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct XZ;
+pub struct XZ;
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub(super) struct XY;
+pub struct XY;
 
 #[derive(InputAction)]
 #[action_output(bool)]
