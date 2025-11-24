@@ -1,6 +1,9 @@
 use bevy::prelude::*;
+use bevy::ecs::system::SystemState;
 use bevy_enhanced_input::prelude::*;
+use bevy::platform::collections::HashMap;
 
+use crate::ghost::{EditorAsset, editor_asset_bundle};
 pub struct PGEditorTrackerPlugin;
 
 
@@ -182,3 +185,191 @@ impl<T: Change + Clone + 'static> Change for ChangesSet<T> {
 
 
 
+
+
+#[derive(Clone)]
+pub struct ChangeSpawn {
+    asset:  EditorAsset,
+    entity: Entity,
+    transform: Transform
+}
+impl ChangeSpawn {
+    pub fn new(
+        entity: Entity, 
+        asset: EditorAsset, 
+        transform: Transform
+    ) -> ChangeSpawn {
+        Self {
+            entity, asset, transform
+        }
+    }
+}
+
+impl Change for ChangeSpawn {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+        world.despawn(self.entity);
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+
+        let mut system_state: SystemState<(
+            ResMut<Assets<Mesh>>,
+            ResMut<Assets<StandardMaterial>>,
+            Res<AssetServer>,
+            Commands
+        )> = SystemState::new(world);
+
+        let (mut meshes, mut materials, ass, mut commands) = system_state.get_mut(world);
+        let entity = commands.spawn(
+            editor_asset_bundle(
+                self.asset.clone(),
+                &ass,
+                &mut meshes,
+                &mut materials,
+                &self.transform
+            )
+        ).id();
+        self.entity = entity;    
+        system_state.apply(world);   
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
+    }
+}
+
+
+#[derive(Clone)]
+pub struct ChangeDespawn {
+    entity:    Entity,
+    asset:     EditorAsset,
+    transform: Transform    // Last Transform
+}
+impl ChangeDespawn {
+    pub fn new(
+        entity: Entity, 
+        asset: EditorAsset, 
+        transform: Transform
+    ) -> ChangeDespawn {
+        Self {
+            entity, asset, transform
+        }
+    }
+}
+
+
+impl Change for ChangeDespawn {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+
+        let mut system_state: SystemState<(
+            ResMut<Assets<Mesh>>,
+            ResMut<Assets<StandardMaterial>>,
+            Res<AssetServer>,
+            Commands
+        )> = SystemState::new(world);
+
+        let (mut meshes, mut materials, ass, mut commands) = system_state.get_mut(world);
+        let entity = commands.spawn(
+            editor_asset_bundle(
+                self.asset.clone(),
+                &ass,
+                &mut meshes,
+                &mut materials,
+                &self.transform
+            )
+        ).id();
+        self.entity = entity;
+        system_state.apply(world);
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+        world.despawn(self.entity);
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
+    }
+}
+
+
+#[derive(Copy, Clone)]
+pub struct ChangeTransform {
+    pub entity: Entity,
+    pub old: Transform,
+    pub new: Transform
+}
+impl ChangeTransform {
+    pub fn new(
+        entity: Entity, 
+        transform: Transform
+    ) -> Self {
+        Self {
+            entity,
+            old: transform,
+            new: transform
+        }
+    }
+}
+
+impl Change for ChangeTransform {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+        if let Some(mut transform) = world.entity_mut(self.entity).get_mut::<Transform>(){
+            *transform = self.old;
+        }
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+        if let Some(mut transform) = world.entity_mut(self.entity).get_mut::<Transform>(){
+            *transform = self.new;
+        }
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
+    }
+}
+
+
+// Used for Dragging and Pressing changes
+#[derive(Resource)]
+pub struct CurrentTransformChanges {
+    pub data: HashMap<Entity, ChangeTransform>
+}
+impl CurrentTransformChanges {
+    pub fn new() -> Self {
+        Self { data: HashMap::new() }
+    }
+    pub fn add(&mut self, entity: Entity, transform: &Transform){
+        self.data.insert(entity, ChangeTransform::new(entity, *transform));
+    }
+    pub fn get(&mut self, entity: Entity) -> &mut ChangeTransform {
+        self.data.get_mut(&entity).unwrap()
+    }
+}

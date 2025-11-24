@@ -10,10 +10,10 @@ description = "Common editor tools"
 resolver = "2"
 
 [dependencies]
-bevy = { version = "0.17", default-features = true, features = []}
-# bevy_pg_core = {git="https://www.github.com/PatrickChodowski/bevy_pg_core"}
-bevy_pg_core = {path="../bevy_pg_core"}
-
+bevy = { version = "0.17", default-features = true, features = ["serialize"]}
+bevy_pg_core = {git="https://www.github.com/PatrickChodowski/bevy_pg_core"}
+bevy_pg_nav = {git="https://www.github.com/PatrickChodowski/bevy_pg_nav"}
+bevy_pg_scenes = {git="https://www.github.com/PatrickChodowski/bevy_pg_scenes"}
 log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",
@@ -21,8 +21,12 @@ log = { version = "0.4", features = [
 libm = "0.2.11"
 serde = "1.0"
 serde_json = "1.0"
+noise = "0.9.0"
 bevy_enhanced_input = "0.19.3"
 dyn-clone = "1.0.20"
+bevy_seedling = "0.6.1"
+bevy_simple_text_input = "0.12.0"
+rand = "0.9.2"
 
 [profile.dev]
 opt-level = 1

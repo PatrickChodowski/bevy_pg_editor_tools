@@ -1,3 +1,5 @@
+use bevy::platform::collections::HashMap;
+use bevy::ecs::system::SystemState;
 use bevy::color::palettes::tailwind::BLUE_500;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy_enhanced_input::prelude::Cancel;
@@ -6,7 +8,12 @@ use std::f32::consts::FRAC_PI_2;
 use bevy_enhanced_input::prelude::*;
 use bevy_pg_core::prelude::PointerData;
 use dyn_clone::DynClone;
+use rand::Rng;
+use rand::seq::IndexedRandom;
+use bevy_pg_nav::prelude::NavMesh;
 
+use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
+use crate::ghost::{Ghost, EditorAsset, editor_asset_bundle};
 
 
 pub struct PGEditorBrushSelectPlugin;
@@ -231,3 +238,166 @@ impl BrushType for NothingBrush {
         // info!("Done nothingbrush");
     }
 }
+
+
+
+
+/*  Different brush types */
+#[derive(Clone)]
+enum StrokeTest {
+    Negative,
+    Positive(ChangeSpawn)
+}
+
+#[derive(Clone)]
+pub struct ScatterBrush {
+    assets:       Vec<&'static str>,
+    radius_inner: f32,
+    chance:       f32,
+    scale:        (f32, f32),
+    rotation:     (f32, f32),
+    nudges:       (f32, f32),
+    data:         HashMap<(u32, u32), StrokeTest>,
+    locs:         Vec<Vec2>
+}
+impl BrushType for ScatterBrush {
+    fn started(&mut self, world:&mut World) {
+        // info!("Started scatterbrush");
+    }
+
+    fn apply(&mut self, world: &mut World, loc: Vec3, radius: f32) {
+
+        let locs: Vec<Vec2> = pack_circles(self.radius_inner, radius, loc.x, loc.z);
+        let threshold = self.radius_inner*2.0*self.radius_inner*2.0;
+
+        for loc in locs.iter(){
+            let uloc = (loc.x as u32, loc.y as u32);
+
+            if self.data.contains_key(&uloc){
+                continue;
+            }
+            if self.locs.iter().any(|&p| loc.distance_squared(p) < threshold) {
+                continue;
+            }
+
+            let mut rng = rand::rng();
+            let random_chance: f32 = rng.random_range(0.0..1.0);
+            self.locs.push(*loc);
+
+            if random_chance > self.chance {
+                self.data.insert(uloc, StrokeTest::Negative);
+                continue;
+            }
+
+            let asset = EditorAsset::Asset(self.assets.choose(&mut rng).unwrap().to_string());
+            let scale = rng.random_range(self.scale.0..self.scale.1);
+            let random_angle = rng.random_range(self.rotation.0..self.rotation.1);
+            let q = Quat::from_euler(EulerRot::XYZ, -FRAC_PI_2, 0.0, random_angle);
+
+            let nudge_x = rng.random_range(self.nudges.0..self.nudges.1)*self.radius_inner;
+            let nudge_z = rng.random_range(self.nudges.0..self.nudges.1)*self.radius_inner;
+
+            let mut pos = Vec3::new(loc.x+nudge_x, loc.y, loc.y+nudge_z);
+
+            let mut system_state: SystemState<(
+                ResMut<Assets<Mesh>>,
+                ResMut<Assets<StandardMaterial>>,
+                Res<AssetServer>,
+                Commands,
+                Res<NavMesh>
+            )> = SystemState::new(world);
+
+            let (mut meshes, mut materials, ass, mut commands, navmesh) = system_state.get_mut(world);
+
+            if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
+                pos.y = height;
+            }
+
+            let transform = Transform::from_translation(pos).with_rotation(q).with_scale(Vec3::splat(scale));
+
+            let entity = commands.spawn(
+                editor_asset_bundle(
+                    asset.clone(),
+                    &ass,
+                    &mut meshes,
+                    &mut materials,
+                    &transform
+                )
+            ).id();
+
+            commands.entity(entity).remove::<Ghost>();        
+            let change_spawn = ChangeSpawn::new(entity, asset, transform);
+            self.data.insert(uloc, StrokeTest::Positive(change_spawn));
+
+            system_state.apply(world);
+
+        }
+        
+    }
+
+    fn done(&mut self, world: &mut World) {
+        // info!("Done scatterbrush");
+
+        let mut system_state: SystemState<ResMut<Changes>> = SystemState::new(world);
+        let mut changes = system_state.get_mut(world);
+
+        let mut cts = ChangesSet::new();
+        for (_k, v) in self.data.iter(){
+            match v {
+                StrokeTest::Positive(ct) => {
+                    cts.add(ct.clone());
+                }
+                _ => {}
+            }
+        }
+        cts.record(&mut changes);
+        system_state.apply(world);
+    }
+}
+
+fn pack_circles(
+    radius_inner: f32, 
+    radius_outer: f32, 
+    cx: f32, 
+    cy: f32
+) -> Vec<Vec2> {
+
+    // Vertical spacing between circle centers
+    let delta_y = ((2.0 * radius_inner).powi(2) - radius_inner.powi(2)).sqrt();
+
+    // 1. Estimate max number of circles along diameter
+    let mut n_row_max = (radius_outer / radius_inner).floor() as i32;
+
+    let (big_x, big_y) = if n_row_max % 2 == 1 {
+        // odd
+        n_row_max += 2;
+        let y = 0.5 * (n_row_max as f32 - 1.0) * delta_y;
+        let x = (n_row_max as f32 - 1.0) * radius_inner;
+        (x, y)
+    } else {
+        // even
+        n_row_max += 2;
+        let y = 0.5 * n_row_max as f32 * delta_y;
+        let x = (n_row_max as f32 + 1.0) * radius_inner;
+        (x, y)
+    };
+
+    let mut inside = Vec::new();
+
+    for row in 0..n_row_max {
+        for col in 0..n_row_max {
+            let x = (col as f32) * 2.0 * radius_inner + (1.0 + (-1.0f32).powf(row as f32)) * 0.5 * radius_inner;
+            let y = (row as f32) * delta_y;
+            let dist = ((x - big_x).powi(2) + (y - big_y).powi(2)).sqrt() + radius_inner;
+            if dist <= radius_outer {
+                inside.push(Vec2::new(
+                    cx + (x - big_x),
+                    cy + (y - big_y)
+                ));
+            }
+        }
+    }
+
+    inside
+}
+
