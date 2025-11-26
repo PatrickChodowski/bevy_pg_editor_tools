@@ -141,7 +141,7 @@ fn ghost_bs_selected(
     }
 }
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub enum GhostTransformMode {
     Translation,
     #[default]
@@ -149,7 +149,7 @@ pub enum GhostTransformMode {
     Scale
 }
 
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone, Copy)]
 pub enum GhostTransformAxis {
     X, 
     #[default]

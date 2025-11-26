@@ -29,19 +29,88 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(set_y_axis_origin)
         .add_observer(set_z_axis)
         .add_observer(set_x_axis)
-        .add_observer(toggle_snap_nav)
         .add_observer(delete_object)
         .add_observer(change_value)
-        .add_observer(change_value_scale)
         .add_observer(start_change_value)
         .add_observer(end_change_value)
         .add_observer(navmesh_generation)
-        .add_observer(toggle_multi_ghost)
         .add_observer(unghost_all)
         .add_observer(save_scene)
+        .add_observer(toggle_markers_vis)
+        .add_observer(toggle_spawners_vis)
+        .add_observer(toggle_ghost_axis)
+        .add_observer(toggle_ghost_mode)
+        .add_observer(toggle_nav_snap)
+        .add_observer(toggle_multi_ghost)
         ;
     }
 }
+
+fn toggle_nav_snap(
+    trigger: On<ToggleSnapNav>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.snap_nav = trigger.value;
+}
+
+fn toggle_multi_ghost(
+    trigger: On<ToggleMultiGhost>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.multi_ghost = trigger.value;
+}
+
+
+fn toggle_ghost_axis(
+    trigger: On<ToggleGhostAxis>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.axis = trigger.value;
+}
+
+fn toggle_ghost_mode(
+    trigger: On<ToggleGhostMode>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.mode = trigger.value;
+}
+
+
+
+fn toggle_markers_vis(
+    trigger: On<ToggleMarkersVis>,
+    mut markers:  Query<&mut Visibility, With<Marker>>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.show_markers = trigger.visible;
+    for mut vis in markers.iter_mut(){
+        if trigger.visible {
+            *vis = Visibility::Visible;
+        } else {
+            *vis = Visibility::Hidden;
+        }
+    }
+}
+
+fn toggle_spawners_vis(
+    trigger: On<ToggleSpawnersVis>,
+    mut spawners:  Query<&mut Visibility, With<Spawner>>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.show_spawners = trigger.visible;
+    for mut vis in spawners.iter_mut(){
+        if trigger.visible {
+            *vis = Visibility::Visible;
+        } else {
+            *vis = Visibility::Hidden;
+        }
+    }
+}
+
+
+
+
+
 
 
 fn save_scene(
@@ -223,17 +292,6 @@ pub fn editor_controller() -> impl Bundle {
                     bindings![KeyCode::KeyX]
                 ),
                 (
-                    Action::<SpawnHelpDisplay>::new(),
-                    Press::default(),
-                    bindings![KeyCode::KeyH]
-                ),
-
-                (
-                    Action::<ToggleSnapNav>::new(),
-                    Press::default(),
-                    bindings![KeyCode::KeyN]
-                ),
-                (
                     Action::<DeleteObject>::new(),
                     Press::default(),
                     bindings![KeyCode::BracketLeft]
@@ -264,6 +322,32 @@ pub struct TriggerThumbnails;
 #[derive(InputAction)]
 #[action_output(bool)]
 pub struct SaveScene;
+
+
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct ToggleMarkersVis{
+    pub visible: bool
+}
+
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct ToggleSpawnersVis{
+    pub visible: bool
+}
+
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct ToggleGhostAxis{
+    pub value: GhostTransformAxis
+}
+
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct ToggleGhostMode{
+    pub value: GhostTransformMode
+}
+
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -314,15 +398,6 @@ fn end_change_value(
     }
     commands.remove_resource::<CurrentTransformChanges>();
 }
-
-fn change_value_scale(
-    trigger:        On<Fire<ChangeValueScale>>,
-    mut ghs:            ResMut<EditorSettings>
-){
-    ghs.change_value_scale += trigger.value*0.1;
-    ghs.change_value_scale = ghs.change_value_scale.clamp(0.1, 1.0);
-}
-
 
 fn change_value(
     trigger:        On<Fire<ChangeValue>>,
@@ -446,9 +521,6 @@ fn change_value(
     }
 }
 
-#[derive(InputAction)]
-#[action_output(bool)]
-pub struct SpawnHelpDisplay;
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -490,9 +562,11 @@ pub struct XZ;
 #[action_output(bool)]
 pub struct XY;
 
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
-struct ToggleSnapNav;
+pub struct ToggleSnapNav {
+    pub value: bool
+}
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -504,9 +578,12 @@ struct DeleteObject;
 pub struct NavMeshGeneration;
 
 
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleMultiGhost;
+pub struct ToggleMultiGhost {
+    pub value: bool
+}
+
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -584,13 +661,6 @@ fn set_z_axis(
     ghost_settings.axis = GhostTransformAxis::Z;
 }
 
-fn toggle_snap_nav(
-    _trigger:    On<Fire<ToggleSnapNav>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.snap_nav = !ghost_settings.snap_nav;
-}
-
 fn delete_object(
     _trigger:    On<Fire<DeleteObject>>,
     mut commands: Commands,
@@ -628,13 +698,6 @@ fn navmesh_generation(
             break;
         }
     }
-}
-
-fn toggle_multi_ghost(
-    _trigger:       On<Fire<ToggleMultiGhost>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.multi_ghost = !ghost_settings.multi_ghost;
 }
 
 fn unghost_all(

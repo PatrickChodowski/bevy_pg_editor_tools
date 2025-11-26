@@ -10,7 +10,6 @@ pub mod controller;
 pub mod ghost;
 pub mod tracker;
 pub mod thumbnails;
-pub mod ui_controls;
 pub mod noises;
 pub mod planes;
 pub mod vertex;
@@ -26,7 +25,6 @@ use planes::PlaneToEdit;
 use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
-use ui_controls::PGEditorControlsDisplayPlugin;
 use vertex::{PGEditorVertexPlugin};
 
 
@@ -49,7 +47,6 @@ impl Plugin for PGEditorPlugin {
                 PGEditorAssetsPanelPlugin,
                 PGEditorThumbnailsPlugin,
                 PGEditorControllerPlugin,
-                PGEditorControlsDisplayPlugin,
                 PGEditorVertexPlugin{
                     vertex_radius: self.vertex_radius
                 },
@@ -61,6 +58,7 @@ impl Plugin for PGEditorPlugin {
                 }
             )
         )
+        .insert_resource(EditorSettings::default())
         .add_plugins(MeshPickingPlugin::default())
         .insert_resource(MeshPickingSettings {
             require_markers: true,
@@ -94,7 +92,8 @@ fn init_editor(
     spawners: Query<(Entity, &Spawner, &Name)>,
     markers: Query<(Entity, &Marker, &Name)>,
     terrains: Query<Entity, With<TerrainChunk>>,
-    ghost_settings: Res<EditorGhostSettings>
+    ghost_settings: Res<EditorGhostSettings>,
+    editor_settings: Res<EditorSettings>
 ) {
     info!("[EDITOR] Entering Editor");
     for terrain_entity in terrains.iter() {
@@ -125,11 +124,20 @@ fn init_editor(
             .insert((Pickable::default(), EditorAsset::Asset(name.to_string())));
     }
 
-    commands.insert_resource(EditorSettings::default());
     commands.insert_resource(Changes::new());
 
     for mut vis in spawnees.iter_mut() {
         *vis = Visibility::Hidden;
+    }
+
+    let mut spawner_visibility = Visibility::Visible;
+    if !editor_settings.show_spawners {
+        spawner_visibility = Visibility::Hidden;
+    }
+
+    let mut marker_visibility = Visibility::Visible;
+    if !editor_settings.show_markers {
+        marker_visibility = Visibility::Hidden;
     }
 
     for (spawner_entity, spawner, name) in spawners.iter() {
@@ -139,6 +147,7 @@ fn init_editor(
             MeshMaterial3d(mat),
             Pickable::default(),
             EditorAsset::Spawner(name.to_string()),
+            spawner_visibility
         ));
     }
 
@@ -149,6 +158,7 @@ fn init_editor(
             MeshMaterial3d(mat),
             Pickable::default(),
             EditorAsset::Marker(name.to_string()),
+            marker_visibility
         ));
     }
     
@@ -203,7 +213,6 @@ fn exit_editor(
         commands.entity(entity).remove::<EditorAsset>();
     }
 
-    commands.remove_resource::<EditorSettings>();
     commands.remove_resource::<Changes>();
     commands.remove_resource::<CurrentTransformChanges>();
     commands.remove_resource::<EditorGhostTransformMemory>();
@@ -233,12 +242,15 @@ pub mod prelude {
     pub use crate::box_select::{BoxSelectController, box_select_controller, box_select_changed, BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin};
     pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
          Brush, PGEditorBrushSelectPlugin, BrushType, BrushSettings, ScatterBrush, NothingBrush};
-    pub use crate::controller::{PGEditorControllerPlugin, editor_controller, EditorController, ToggleEditor, SaveScene, ToggleBrush};
-    pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset};
+    pub use crate::controller::{
+        PGEditorControllerPlugin, editor_controller, EditorController, 
+        ToggleEditor, SaveScene, ToggleBrush, ToggleMarkersVis, ToggleSpawnersVis, 
+        ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost
+    };
+    pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, GhostTransformAxis, GhostTransformMode};
     pub use crate::thumbnails::PGEditorThumbnailsPlugin;
     pub use crate::tracker::{PGEditorTrackerPlugin, Undo, Redo, UndoMessage,
          RedoMessage, Changes, Change, ChangesSet, CurrentTransformChanges};
-    pub use crate::ui_controls::PGEditorControlsDisplayPlugin;
     pub use crate::planes::{PlaneToEdit, plane_mesh};
     pub use crate::vertex::{SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, TerrainVertexController, VertexRefs, terrain_vertex_controller};
     pub use crate::terrain_brushes::{TerrainHeightBrush, TerrainColorBrush, HeightBrushType, ColorBrushType};
