@@ -14,14 +14,16 @@ pub mod ui_controls;
 pub mod noises;
 pub mod planes;
 pub mod vertex;
+pub mod settings;
 pub mod terrain_brushes;
 
 use assets_panel::PGEditorAssetsPanelPlugin;
 use brushes::{PGEditorBrushSelectPlugin, BrushSelectController};
 use box_select::PGEditorBoxSelectPlugin;
 use controller::{PGEditorControllerPlugin, EditorController};
-use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorSettings, EditorGhostTransformMemory};
+use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorGhostTransformMemory};
 use planes::PlaneToEdit;
+use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use ui_controls::PGEditorControlsDisplayPlugin;
@@ -232,7 +234,7 @@ pub mod prelude {
     pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
          Brush, PGEditorBrushSelectPlugin, BrushType, BrushSettings, ScatterBrush, NothingBrush};
     pub use crate::controller::{PGEditorControllerPlugin, editor_controller, EditorController, ToggleEditor, SaveScene, ToggleBrush};
-    pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, EditorSettings, Ghost, EditorAsset};
+    pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset};
     pub use crate::thumbnails::PGEditorThumbnailsPlugin;
     pub use crate::tracker::{PGEditorTrackerPlugin, Undo, Redo, UndoMessage,
          RedoMessage, Changes, Change, ChangesSet, CurrentTransformChanges};
@@ -241,6 +243,7 @@ pub mod prelude {
     pub use crate::vertex::{SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, TerrainVertexController, VertexRefs, terrain_vertex_controller};
     pub use crate::terrain_brushes::{TerrainHeightBrush, TerrainColorBrush, HeightBrushType, ColorBrushType};
     pub use crate::noises::{NoiseType, Noise};
+    pub use crate::settings::EditorSettings;
 
     pub use crate::PGEditorPlugin;
 }

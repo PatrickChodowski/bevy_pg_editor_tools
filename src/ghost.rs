@@ -10,8 +10,10 @@ use bevy_pg_nav::prelude::NavMesh;
 use bevy_pg_core::prelude::{MainCamera, GameState, GameStatePlay, AABB, PointerData};
 use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static};
 
-use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
+
 use crate::assets_panel::EditorAssetPanel;
+use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
+use crate::settings::EditorSettings;
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn, CurrentTransformChanges};
 
 pub struct PGEditorGhostPlugin{
@@ -135,28 +137,6 @@ fn ghost_bs_selected(
     for (entity, mat, transform) in assets.iter(){
         if trigger.has_point(transform.translation.xz()){
             commands.entity(entity).insert(Ghost{material_after: mat.0.clone()});
-        }
-    }
-}
-
-
-
-#[derive(Resource, Debug)]
-pub struct EditorSettings {
-    pub mode: GhostTransformMode,
-    pub axis: GhostTransformAxis,
-    pub change_value_scale: f32,
-    pub snap_nav: bool,
-    pub multi_ghost: bool
-}
-impl Default for EditorSettings {
-    fn default() -> Self {
-        Self {
-            mode: GhostTransformMode::default(),
-            axis: GhostTransformAxis::default(),
-            snap_nav: true,
-            multi_ghost: false,
-            change_value_scale: 1.0
         }
     }
 }

@@ -10,7 +10,8 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
-use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode, EditorSettings};
+use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
+use crate::settings::EditorSettings;
 
 pub struct PGEditorControllerPlugin;
 
