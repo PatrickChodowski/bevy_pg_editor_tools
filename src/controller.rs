@@ -42,9 +42,20 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_ghost_mode)
         .add_observer(toggle_nav_snap)
         .add_observer(toggle_multi_ghost)
+        .add_observer(change_brush)
         ;
     }
 }
+
+fn change_brush(
+    trigger: On<ChangeBrush>,
+    mut commands: Commands,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.brush_id = trigger.value;
+    editor_settings.brush_typ = (editor_settings.brush_mapping)(&mut commands, trigger.value);
+}
+
 
 fn toggle_nav_snap(
     trigger: On<ToggleSnapNav>,
@@ -65,14 +76,14 @@ fn toggle_ghost_axis(
     trigger: On<ToggleGhostAxis>,
     mut editor_settings: ResMut<EditorSettings>
 ){
-    editor_settings.axis = trigger.value;
+    editor_settings.ghost_transform_axis = trigger.value;
 }
 
 fn toggle_ghost_mode(
     trigger: On<ToggleGhostMode>,
     mut editor_settings: ResMut<EditorSettings>
 ){
-    editor_settings.mode = trigger.value;
+    editor_settings.ghost_transform_mode = trigger.value;
 }
 
 
@@ -195,11 +206,6 @@ pub fn editor_controller() -> impl Bundle {
                             positive: KeyCode::ArrowUp.into()
                         }
                     )
-                ),
-                (
-                    Action::<ToggleBrush>::new(),
-                    Press::default(),
-                    bindings![KeyCode::KeyM]
                 ),
                 (
                     Action::<ToggleEditor>::new(),
@@ -348,10 +354,11 @@ pub struct ToggleGhostMode{
     pub value: GhostTransformMode
 }
 
-
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleBrush;
+pub struct ChangeBrush{
+    pub value: usize
+}
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -415,7 +422,7 @@ fn change_value(
     let mut origin: Option<Vec2> = None;
 
     // Special case for OriginY and Rotation: need origin point of many transforms
-    if ghs.axis == GhostTransformAxis::OriginY && ghs.mode == GhostTransformMode::Rotation {
+    if ghs.ghost_transform_axis == GhostTransformAxis::OriginY && ghs.ghost_transform_mode == GhostTransformMode::Rotation {
         let count = transforms.iter().len();
         match count {
             0 => {}
@@ -440,10 +447,10 @@ fn change_value(
     }
 
     for mut transform in transforms.iter_mut(){
-        match ghs.mode {
+        match ghs.ghost_transform_mode {
             GhostTransformMode::Translation => {
                 let sd = d*ghs.change_value_scale;
-                match ghs.axis {
+                match ghs.ghost_transform_axis {
                     GhostTransformAxis::X => {
                         transform.translation.x += sd;
                         if ghs.snap_nav {
@@ -466,7 +473,7 @@ fn change_value(
             }
             GhostTransformMode::Rotation => {
                 let sd = d*0.01*ghs.change_value_scale;
-                match ghs.axis {
+                match ghs.ghost_transform_axis {
                     GhostTransformAxis::X => {transform.rotate_x(sd)}
                     GhostTransformAxis::Y => {transform.rotate_y(sd)}
                     GhostTransformAxis::Z => {transform.rotate_z(sd)}
@@ -498,7 +505,7 @@ fn change_value(
             }
             GhostTransformMode::Scale => {
                 let sd = d*ghs.change_value_scale;
-                match ghs.axis {
+                match ghs.ghost_transform_axis {
                     GhostTransformAxis::X => {transform.scale.x += sd}
                     GhostTransformAxis::Y => {transform.scale.y += sd}
                     GhostTransformAxis::Z => {transform.scale.z += sd}
@@ -594,21 +601,21 @@ fn set_translation_mode(
     _trigger:    On<Fire<SetTranslationMode>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.mode = GhostTransformMode::Translation;
+    ghost_settings.ghost_transform_mode = GhostTransformMode::Translation;
 }
 
 fn set_rotation_mode(
     _trigger:    On<Fire<SetRotationMode>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.mode = GhostTransformMode::Rotation;
+    ghost_settings.ghost_transform_mode = GhostTransformMode::Rotation;
 }
 
 fn set_scale_mode(
     _trigger:    On<Fire<SetScaleMode>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.mode = GhostTransformMode::Scale;
+    ghost_settings.ghost_transform_mode = GhostTransformMode::Scale;
 }
 
 
@@ -616,49 +623,49 @@ fn set_x_axis(
     _trigger:    On<Fire<SetXAxis>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.axis = GhostTransformAxis::X;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::X;
 }
 
 fn set_y_axis(
     _trigger:    On<Fire<SetYAxis>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.axis = GhostTransformAxis::Y;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::Y;
 }
 
 fn set_all_axis(
     _trigger:    On<Fire<AllAxis>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.axis = GhostTransformAxis::All;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::All;
 }
 
 fn set_xz_axis(
     _trigger:    On<Fire<XZ>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.axis = GhostTransformAxis::XZ;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::XZ;
 }
 
 fn set_xy_axis(
     _trigger:    On<Fire<XY>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.axis = GhostTransformAxis::XY;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::XY;
 }
 
 fn set_y_axis_origin(
     _trigger:    On<Fire<SetYAxisOrigin>>,
     mut ghost_settings: ResMut<EditorSettings> 
 ){
-    ghost_settings.axis = GhostTransformAxis::OriginY;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::OriginY;
 }
 
 fn set_z_axis(
     _trigger:    On<Fire<SetZAxis>>,
     mut ghost_settings: ResMut<EditorSettings>
 ){
-    ghost_settings.axis = GhostTransformAxis::Z;
+    ghost_settings.ghost_transform_axis = GhostTransformAxis::Z;
 }
 
 fn delete_object(

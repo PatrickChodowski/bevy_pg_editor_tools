@@ -1,28 +1,45 @@
 use bevy::{color::palettes::css::WHITE, prelude::*};
+use crate::brushes::{NothingBrush, BrushType};
 use crate::ghost::{GhostTransformAxis, GhostTransformMode};
 
-#[derive(Resource, Debug)]
+#[derive(Resource)]
 pub struct EditorSettings {
-    pub mode: GhostTransformMode,
-    pub axis: GhostTransformAxis,
+    pub ghost_transform_mode: GhostTransformMode,
+    pub ghost_transform_axis: GhostTransformAxis,
     pub change_value_scale: f32,
-    pub terrain_color: Color,
+    pub color: Color,
     pub snap_nav: bool,
     pub multi_ghost: bool,
     pub show_spawners: bool,
-    pub show_markers: bool
+    pub show_markers: bool,
+    pub mode: EditorMode,
+    pub brush_mapping: fn(commands: &mut Commands, brush_id: usize) -> Box<dyn BrushType>,
+    pub brush_id: usize,
+    pub brush_radius: f32,
+    pub brush_typ: Box<dyn BrushType>
 }
-impl Default for EditorSettings {
-    fn default() -> Self {
+impl EditorSettings {
+    pub fn new(brush_mapping: fn(commands: &mut Commands, brush_id: usize) -> Box<dyn BrushType>) -> Self {
         Self {
-            mode: GhostTransformMode::default(),
-            axis: GhostTransformAxis::default(),
+            ghost_transform_mode: GhostTransformMode::default(),
+            ghost_transform_axis: GhostTransformAxis::default(),
             change_value_scale: 1.0,
-            terrain_color: Color::from(WHITE),
+            color: Color::from(WHITE),
             snap_nav: true,
             multi_ghost: false,
             show_spawners: false,
-            show_markers: false
+            show_markers: false,
+            mode: EditorMode::Scene,
+            brush_mapping,
+            brush_id: 0,
+            brush_radius: 10.0,
+            brush_typ: Box::new(NothingBrush)
         }
     }
+}
+
+#[derive(Debug)]
+pub enum EditorMode {
+    Scene,
+    Brushes
 }

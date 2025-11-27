@@ -12,6 +12,7 @@ use rand::Rng;
 use rand::seq::IndexedRandom;
 use bevy_pg_nav::prelude::NavMesh;
 
+use crate::prelude::EditorSettings;
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
 use crate::ghost::{EditorAsset, EditorGhostSettings, Ghost, editor_asset_bundle};
 
@@ -22,7 +23,6 @@ impl Plugin for PGEditorBrushSelectPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_input_context::<BrushSelectController>()
-        .insert_resource(BrushSettings::default())
         .add_message::<BrushStart>()
         .add_message::<BrushDone>()
         .add_observer(start_brush)
@@ -39,21 +39,6 @@ impl Plugin for PGEditorBrushSelectPlugin {
         ;
     }
 }
-
-#[derive(Resource)]
-pub struct BrushSettings {
-    pub radius: f32,
-    pub typ: Box<dyn BrushType>
-}
-impl Default for BrushSettings {
-    fn default() -> Self {
-        Self {
-            radius: 10.0,
-            typ: Box::new(NothingBrush)            
-        }
-    }
-}
-
 
 fn brush_started(
     world:   &mut World,
@@ -124,7 +109,7 @@ fn start_brush(
     mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
     mut materials:     ResMut<Assets<StandardMaterial>>,
-    brush_settings:    Res<BrushSettings>,
+    editor_settings:    Res<EditorSettings>,
     brushes:           Query<Entity, With<BrushMarker>>
 ){
     for brush_entity in brushes.iter(){
@@ -135,13 +120,13 @@ fn start_brush(
     let loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
     let brush = Brush{
         loc, 
-        radius: brush_settings.radius, 
-        typ: brush_settings.typ.clone()
+        radius: editor_settings.brush_radius, 
+        typ: editor_settings.brush_typ.clone()
     };
 
     commands.insert_resource(brush);
     commands.spawn((
-        Mesh3d(meshes.add(Circle::new(brush_settings.radius))),
+        Mesh3d(meshes.add(Circle::new(editor_settings.brush_radius))),
         MeshMaterial3d(materials.add(Color::from(BLUE_500).with_alpha(0.4))),
         Transform::from_xyz(world_pos.x, world_pos.y + 1.0, world_pos.z)
                   .with_rotation(Quat::from_rotation_x(-FRAC_PI_2)),

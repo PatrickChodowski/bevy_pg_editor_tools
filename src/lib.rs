@@ -27,12 +27,15 @@ use thumbnails::PGEditorThumbnailsPlugin;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use vertex::{PGEditorVertexPlugin};
 
+use crate::brushes::BrushType;
+
 
 pub struct PGEditorPlugin{
     pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub markers_mapping: fn(name: String) -> Marker,
     pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner,
+    pub brush_mapping: fn(commands: &mut Commands, brush_id: usize) -> Box<dyn BrushType>,
     pub vertex_radius: f32
 }
 
@@ -58,7 +61,7 @@ impl Plugin for PGEditorPlugin {
                 }
             )
         )
-        .insert_resource(EditorSettings::default())
+        .insert_resource(EditorSettings::new(self.brush_mapping))
         .add_plugins(MeshPickingPlugin::default())
         .insert_resource(MeshPickingSettings {
             require_markers: true,
@@ -241,10 +244,10 @@ pub mod prelude {
     pub use crate::assets_panel::PGEditorAssetsPanelPlugin;
     pub use crate::box_select::{BoxSelectController, box_select_controller, box_select_changed, BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin};
     pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
-         Brush, PGEditorBrushSelectPlugin, BrushType, BrushSettings, ScatterBrush, NothingBrush};
+         Brush, PGEditorBrushSelectPlugin, BrushType, ScatterBrush, NothingBrush};
     pub use crate::controller::{
         PGEditorControllerPlugin, editor_controller, EditorController, 
-        ToggleEditor, SaveScene, ToggleBrush, ToggleMarkersVis, ToggleSpawnersVis, 
+        ToggleEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
         ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost
     };
     pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, GhostTransformAxis, GhostTransformMode};
