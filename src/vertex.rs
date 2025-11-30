@@ -6,6 +6,7 @@ use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::color::palettes::css::ORANGE_RED;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
+use bevy_pg_core::prelude::GameStatePlay;
 
 use crate::planes::PlaneToEdit;
 
@@ -187,6 +188,7 @@ fn init_plane_to_edit(
             NotShadowReceiver,
             Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(1.0)),
             PlaneVertex::new(index, pos, &v_clr[index], vertex_refs.radius, trigger.plane_entity),
+            DespawnOnExit(GameStatePlay::Editor)
         )).id();
         vertices.push(entity);
     }

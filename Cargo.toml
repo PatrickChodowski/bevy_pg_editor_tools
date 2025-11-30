@@ -10,7 +10,11 @@ description = "Common editor tools"
 resolver = "2"
 
 [dependencies]
-bevy = { version = "0.17", default-features = true, features = ["serialize","bevy_mesh_picking_backend"]}
+bevy = { version = "0.17", default-features = true, features = [
+    "serialize",
+    "bevy_mesh_picking_backend",
+    "experimental_bevy_feathers"
+]}
 bevy_pg_core = {git="https://www.github.com/PatrickChodowski/bevy_pg_core"}
 bevy_pg_nav = {git="https://www.github.com/PatrickChodowski/bevy_pg_nav"}
 bevy_pg_scenes = {git="https://www.github.com/PatrickChodowski/bevy_pg_scenes"}

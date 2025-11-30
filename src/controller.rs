@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 use bevy::tasks::IoTaskPool;
 use bevy::platform::collections::HashMap;
+use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
-use bevy_pg_core::prelude::rotate_point_2d;
+use bevy_pg_core::prelude::{GameStatePlay, rotate_point_2d};
 use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh};
 use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static};
 use std::fs::File;
@@ -11,7 +12,10 @@ use std::io::{BufWriter, Write};
 
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
-use crate::settings::EditorSettings;
+use crate::planes::PlaneToEdit;
+use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
+use crate::settings::{EditorMode, EditorSettings};
+use crate::vertex::PlaneVertex;
 
 pub struct PGEditorControllerPlugin;
 
@@ -29,13 +33,18 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(set_y_axis_origin)
         .add_observer(set_z_axis)
         .add_observer(set_x_axis)
-        .add_observer(delete_object)
+
+
         .add_observer(change_value)
         .add_observer(start_change_value)
         .add_observer(end_change_value)
-        .add_observer(navmesh_generation)
         .add_observer(unghost_all)
+        .add_observer(on_fire_unghost_all)
+        .add_observer(on_fire_save_scene)
         .add_observer(save_scene)
+        .add_observer(delete_object)
+        .add_observer(navmesh_generation)
+
         .add_observer(toggle_markers_vis)
         .add_observer(toggle_spawners_vis)
         .add_observer(toggle_ghost_axis)
@@ -43,17 +52,80 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_nav_snap)
         .add_observer(toggle_multi_ghost)
         .add_observer(change_brush)
+        .add_observer(turn_off_editor)
+        .add_observer(toggle_settings)
+        .add_observer(change_editor_mode)
         ;
     }
 }
 
+fn change_editor_mode(
+    trigger: On<ChangeEditorMode>,
+    mut editor_settings: ResMut<EditorSettings>,
+    mut commands: Commands,
+    controls: Query<(Entity, Option<&BrushControls>, Option<&SceneControls>, Option<&PlaneControls>), With<EditorControls>>
+){
+    editor_settings.mode = trigger.value;
+    
+    match editor_settings.mode {
+        EditorMode::Scene => {
+            for (entity, _brush, scene, _plane) in controls.iter(){
+                if scene.is_some(){
+                    commands.entity(entity).remove::<InteractionDisabled>();
+                    // node.display = Display::Flex;
+                } else {
+                    // node.display = Display::None;
+                    commands.entity(entity).insert(InteractionDisabled);
+                }
+            }
+        }
+        EditorMode::Brushes => {
+            for (entity, brush, _scene, _plane) in controls.iter(){
+                if brush.is_some(){
+                    // node.display = Display::Flex;
+                    commands.entity(entity).remove::<InteractionDisabled>();
+                } else {
+                    // node.display = Display::None;
+                    commands.entity(entity).insert(InteractionDisabled);
+                }
+            }
+        }
+        EditorMode::Plane => {
+            for (entity, _brush, _scene, plane) in controls.iter(){
+                if plane.is_some(){
+                    // node.display = Display::Flex;
+                    commands.entity(entity).remove::<InteractionDisabled>();
+                } else {
+                    // node.display = Display::None;
+                    commands.entity(entity).insert(InteractionDisabled);
+                }
+            }
+        }
+    }
+
+}
+
+
+fn turn_off_editor(
+    _trigger: On<Fire<TurnOffEditor>>,
+    mut next_gsp: ResMut<NextState<GameStatePlay>>
+){
+    next_gsp.set(GameStatePlay::Running);
+}
+
+
 fn change_brush(
     trigger: On<ChangeBrush>,
     mut commands: Commands,
-    mut editor_settings: ResMut<EditorSettings>
+    mut editor_settings: ResMut<EditorSettings>, 
+    terrain_chunks: Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>,
+    vertices: Query<Entity, With<PlaneVertex>>,
 ){
+    for entity in vertices.iter(){
+        commands.entity(entity).despawn();
+    }
     editor_settings.brush_id = trigger.value;
-    editor_settings.brush_typ = (editor_settings.brush_mapping)(&mut commands, trigger.value);
+    editor_settings.brush_typ = (editor_settings.brush_mapping)(&mut commands, &terrain_chunks, trigger.value);
 }
 
 
@@ -118,14 +190,19 @@ fn toggle_spawners_vis(
     }
 }
 
-
+fn on_fire_save_scene(
+     _trigger: On<Fire<SaveScene>>,
+     mut commands: Commands,
+){
+    commands.trigger(SaveScene);
+}
 
 
 
 
 
 fn save_scene(
-    _trigger: On<Fire<SaveScene>>,
+    _trigger: On<SaveScene>,
     current_chunk: Res<CurrentChunk>,
     objects: Query<
         (
@@ -144,7 +221,7 @@ fn save_scene(
     );
 
     let mut sods: HashMap<Name, Vec<SceneObjectData>> = HashMap::new();
-    for (transform, name, maybe_markee, maybe_spawner, maybe_marker) in objects.iter() {
+    for (transform, name, maybe_markee, maybe_spawner, _maybe_marker) in objects.iter() {
         if maybe_markee.is_some() {
             continue;
         }
@@ -208,19 +285,19 @@ pub fn editor_controller() -> impl Bundle {
                     )
                 ),
                 (
-                    Action::<ToggleEditor>::new(),
-                    HoldAndRelease::new(1.0),
-                    bindings![KeyCode::Tab]
-                ),
-                (
-                    Action::<NavMeshGeneration>::new(),
-                    Press::default(),
-                    bindings![KeyCode::KeyG]
+                    Action::<TurnOffEditor>::new(),
+                    HoldAndRelease::new(0.3),
+                    bindings![KeyCode::Escape]
                 ),
                 (
                     Action::<UnghostAll>::new(),
                     Press::default(),
                     bindings![KeyCode::KeyU]
+                ),
+                (
+                    Action::<ToggleEditorSettings>::new(),
+                    Press::default(),
+                    bindings![KeyCode::Tab]
                 ),
                 (
                     Action::<ToggleMultiGhost>::new(),
@@ -320,37 +397,37 @@ pub fn editor_controller() -> impl Bundle {
 
 
 
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
 pub struct TriggerThumbnails;
 
 
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
 pub struct SaveScene;
 
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleMarkersVis{
+pub struct ToggleMarkersVis {
     pub visible: bool
 }
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleSpawnersVis{
+pub struct ToggleSpawnersVis {
     pub visible: bool
 }
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleGhostAxis{
+pub struct ToggleGhostAxis {
     pub value: GhostTransformAxis
 }
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleGhostMode{
+pub struct ToggleGhostMode {
     pub value: GhostTransformMode
 }
 
@@ -360,9 +437,20 @@ pub struct ChangeBrush{
     pub value: usize
 }
 
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct ChangeEditorMode{
+    pub value: EditorMode
+}
+
+
 #[derive(InputAction)]
 #[action_output(bool)]
-pub struct ToggleEditor;
+pub struct TurnOnEditor;
+
+#[derive(InputAction)]
+#[action_output(bool)]
+pub struct TurnOffEditor;
 
 #[derive(InputAction)]
 #[action_output(f32)]
@@ -580,9 +668,12 @@ pub struct ToggleSnapNav {
 struct DeleteObject;
 
 
+#[derive(Event)]
+pub struct NavMeshGeneration;
+
 #[derive(InputAction)]
 #[action_output(bool)]
-pub struct NavMeshGeneration;
+pub struct ToggleEditorSettings;
 
 
 #[derive(InputAction, Event)]
@@ -591,11 +682,26 @@ pub struct ToggleMultiGhost {
     pub value: bool
 }
 
-
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
 pub struct UnghostAll;
 
+
+fn toggle_settings(
+    _trigger: On<Fire<ToggleEditorSettings>>,
+    mut node: Single<&mut Node, With<EditorControlsPanel>>
+){
+    match node.display {
+        Display::None => {
+            node.display = Display::Flex;
+        }
+        Display::Flex => {
+            node.display = Display::None;
+        }
+        _ => {}
+    }
+
+}
 
 fn set_translation_mode(
     _trigger:    On<Fire<SetTranslationMode>>,
@@ -617,7 +723,6 @@ fn set_scale_mode(
 ){
     ghost_settings.ghost_transform_mode = GhostTransformMode::Scale;
 }
-
 
 fn set_x_axis(
     _trigger:    On<Fire<SetXAxis>>,
@@ -685,7 +790,7 @@ fn delete_object(
 }
 
 fn navmesh_generation(
-    _trigger:       On<Fire<NavMeshGeneration>>,
+    _trigger:       On<NavMeshGeneration>,
     mut commands:   Commands,
     current_chunk:  Res<CurrentChunk>,
     terrain_chunks: Query<(&TerrainChunk, &Name)>,
@@ -707,8 +812,15 @@ fn navmesh_generation(
     }
 }
 
+fn on_fire_unghost_all(
+    _trigger:     On<Fire<UnghostAll>>,
+    mut commands: Commands
+){
+    commands.trigger(UnghostAll);
+}
+
 fn unghost_all(
-    _trigger: On<Fire<UnghostAll>>,
+    _trigger:     On<UnghostAll>,
     mut commands: Commands,
     query:        Query<Entity, With<Ghost>>
 ){

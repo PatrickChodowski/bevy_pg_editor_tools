@@ -13,6 +13,7 @@ pub mod thumbnails;
 pub mod noises;
 pub mod planes;
 pub mod vertex;
+pub mod ui;
 pub mod settings;
 pub mod terrain_brushes;
 
@@ -25,6 +26,7 @@ use planes::PlaneToEdit;
 use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
+use ui::PGEditorUIPlugin;
 use vertex::{PGEditorVertexPlugin};
 
 use crate::brushes::BrushType;
@@ -35,7 +37,8 @@ pub struct PGEditorPlugin{
     pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub markers_mapping: fn(name: String) -> Marker,
     pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner,
-    pub brush_mapping: fn(commands: &mut Commands, brush_id: usize) -> Box<dyn BrushType>,
+    pub brush_mapping: fn(commands: &mut Commands, terrain_chunks: &Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>, brush_id: usize) -> Box<dyn BrushType>,
+    pub brush_id_labels: Vec<(usize, &'static str)>,
     pub vertex_radius: f32
 }
 
@@ -58,10 +61,14 @@ impl Plugin for PGEditorPlugin {
                     marker_mesh: self.marker_mesh,
                     markers_mapping: self.markers_mapping,
                     spawners_mapping: self.spawners_mapping
-                }
+                },
+                PGEditorUIPlugin
             )
         )
-        .insert_resource(EditorSettings::new(self.brush_mapping))
+        .insert_resource(EditorSettings::new(
+            self.brush_mapping,
+            self.brush_id_labels.clone()
+        ))
         .add_plugins(MeshPickingPlugin::default())
         .insert_resource(MeshPickingSettings {
             require_markers: true,
@@ -242,23 +249,39 @@ fn exit_editor(
 
 pub mod prelude {
     pub use crate::assets_panel::PGEditorAssetsPanelPlugin;
-    pub use crate::box_select::{BoxSelectController, box_select_controller, box_select_changed, BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin};
-    pub use crate::brushes::{BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
-         Brush, PGEditorBrushSelectPlugin, BrushType, ScatterBrush, NothingBrush};
+    pub use crate::box_select::{
+        BoxSelectController, box_select_controller, box_select_changed, 
+        BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin
+    };
+    pub use crate::brushes::{
+        BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
+         Brush, PGEditorBrushSelectPlugin, BrushType, ScatterBrush, NothingBrush
+    };
     pub use crate::controller::{
         PGEditorControllerPlugin, editor_controller, EditorController, 
-        ToggleEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
-        ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost
+        TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
+        ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost, 
+        ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorSettings
     };
-    pub use crate::ghost::{PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, GhostTransformAxis, GhostTransformMode};
+    pub use crate::ghost::{
+        PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, 
+        EditorAsset, GhostTransformAxis, GhostTransformMode
+    };
     pub use crate::thumbnails::PGEditorThumbnailsPlugin;
-    pub use crate::tracker::{PGEditorTrackerPlugin, Undo, Redo, UndoMessage,
-         RedoMessage, Changes, Change, ChangesSet, CurrentTransformChanges};
+    pub use crate::tracker::{
+        PGEditorTrackerPlugin, Undo, Redo, UndoMessage,
+         RedoMessage, Changes, Change, ChangesSet, CurrentTransformChanges
+    };
     pub use crate::planes::{PlaneToEdit, plane_mesh};
-    pub use crate::vertex::{SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, TerrainVertexController, VertexRefs, terrain_vertex_controller};
-    pub use crate::terrain_brushes::{TerrainHeightBrush, TerrainColorBrush, HeightBrushType, ColorBrushType};
+    pub use crate::vertex::{
+        SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, 
+        TerrainVertexController, VertexRefs, terrain_vertex_controller
+    };
+    pub use crate::terrain_brushes::{
+        TerrainHeightBrush, TerrainColorBrush, HeightBrushType, ColorBrushType
+    };
     pub use crate::noises::{NoiseType, Noise};
-    pub use crate::settings::EditorSettings;
+    pub use crate::settings::{EditorSettings, EditorMode};
 
     pub use crate::PGEditorPlugin;
 }

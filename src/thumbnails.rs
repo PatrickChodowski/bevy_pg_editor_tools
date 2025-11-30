@@ -44,6 +44,7 @@ impl Plugin for PGEditorThumbnailsPlugin {
                                         .and(resource_exists::<DoneThumbnaililing>)))
         
         .add_observer(thumbnails)
+        .add_observer(on_fire_thumbnails)
         ;
     }
 }
@@ -275,8 +276,16 @@ struct AssetHandles {
 }
 
 
-fn thumbnails(
+fn on_fire_thumbnails(
     _trigger: On<Fire<TriggerThumbnails>>,
+    mut commands: Commands,
+){
+    commands.trigger(TriggerThumbnails);
+}
+
+
+fn thumbnails(
+    _trigger: On<TriggerThumbnails>,
     mut commands: Commands,
     ass: Res<AssetServer>,
     mut clear_color: ResMut<ClearColor>,
