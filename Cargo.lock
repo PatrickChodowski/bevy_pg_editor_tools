@@ -1135,9 +1135,10 @@ dependencies = [
 [[package]]
 name = "bevy_pg_scenes"
 version = "0.1.0"
-source = "git+https://www.github.com/PatrickChodowski/bevy_pg_scenes#a5e4a6ea84a9a5c36eb84ce5b30db0419df7dd8d"
+source = "git+https://www.github.com/PatrickChodowski/bevy_pg_scenes#b81894e9d82814649370c7a88fe251f4b0f63433"
 dependencies = [
  "bevy",
+ "bevy_common_assets",
  "bevy_pg_core",
  "bevy_pg_nav",
  "libm",

@@ -7,7 +7,7 @@ use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{GameStatePlay, rotate_point_2d};
 use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh};
-use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static};
+use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
@@ -72,12 +72,13 @@ fn serialize_plane(
     for (index, (mesh3d, maybe_name)) in query.iter().enumerate(){
         let Some(mesh) = meshes.get(&mesh3d.0) else {continue};
         let serialized_mesh = SerializedMesh::from_mesh(mesh.clone());
-        let json = serde_json::to_string_pretty(&serialized_mesh).unwrap();
+        let pg_serialized_mesh = PGSerializedMesh{data: serialized_mesh};
+        let json = serde_json::to_string_pretty(&pg_serialized_mesh).unwrap();
         let mesh_path: String;
         if let Some(name) = maybe_name {
-            mesh_path = format!("assets/meshes/{}.json", name);
+            mesh_path = format!("assets/meshes/{}.mesh.json", name);
         } else {
-            mesh_path = format!("assets/meshes/{}.json", index);
+            mesh_path = format!("assets/meshes/{}.mesh.json", index);
         }
         info!("serializing to path: {}", mesh_path);
         let res = std::fs::write(mesh_path, json);
