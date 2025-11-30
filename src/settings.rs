@@ -19,7 +19,10 @@ pub struct EditorSettings {
     pub brush_id_labels: Vec<(usize, &'static str)>,
     pub brush_id: usize,
     pub brush_radius: f32,
-    pub brush_typ: Box<dyn BrushType>
+    pub brush_typ: Box<dyn BrushType>,
+    pub plane_width: f32,
+    pub plane_height: f32,
+    pub plane_subdivisions: u32
 }
 impl EditorSettings {
     pub fn new(
@@ -40,7 +43,10 @@ impl EditorSettings {
             brush_id_labels,
             brush_id: 0,
             brush_radius: 10.0,
-            brush_typ: Box::new(NothingBrush)
+            brush_typ: Box::new(NothingBrush),
+            plane_height: 50.0,
+            plane_width: 50.0,
+            plane_subdivisions: 1
         }
     }
 }

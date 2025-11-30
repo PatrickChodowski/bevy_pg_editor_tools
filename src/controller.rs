@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::mesh::SerializedMesh;
 use bevy::tasks::IoTaskPool;
 use bevy::platform::collections::HashMap;
 use bevy::ui::InteractionDisabled;
@@ -14,8 +15,8 @@ use crate::assets_panel::EditorAssetPanel;
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
+use crate::planes::{PlaneToEdit, plane_mesh};
 use crate::settings::{EditorMode, EditorSettings};
-use crate::vertex::PlaneVertex;
 
 pub struct PGEditorControllerPlugin;
 
@@ -55,8 +56,48 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_editor_panel)
         .add_observer(toggle_assets_panel)
         .add_observer(change_editor_mode)
+
+        .add_observer(spawn_plane)
+        .add_observer(serialize_plane)
         ;
     }
+}
+
+fn serialize_plane(
+    _trigger: On<SerializePlane>,
+    query:    Query<(&Mesh3d, Option<&Name>), With<PlaneToEdit>>,
+    meshes:   Res<Assets<Mesh>>,
+){
+    info!("[EDITOR] serialize planes");
+    for (index, (mesh3d, maybe_name)) in query.iter().enumerate(){
+        let Some(mesh) = meshes.get(&mesh3d.0) else {continue};
+        let serialized_mesh = SerializedMesh::from_mesh(mesh.clone());
+        let json = serde_json::to_string_pretty(&serialized_mesh).unwrap();
+        let mesh_path: String;
+        if let Some(name) = maybe_name {
+            mesh_path = format!("assets/meshes/{}.json", name);
+        } else {
+            mesh_path = format!("assets/meshes/{}.json", index);
+        }
+        info!("serializing to path: {}", mesh_path);
+        let res = std::fs::write(mesh_path, json);
+        info!("{:?}", res);
+    }
+}
+
+
+fn spawn_plane(
+    _trigger: On<SpawnPlane>,
+    editor_settings: Res<EditorSettings>, 
+    mut commands: Commands,
+    mut meshes:        ResMut<Assets<Mesh>>,
+    mut materials:     ResMut<Assets<StandardMaterial>>,
+){
+    let _plane_entity = commands.spawn((
+        plane_mesh(editor_settings.plane_width, editor_settings.plane_height, editor_settings.plane_subdivisions, &mut meshes),
+        MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0))
+    )).id();
 }
 
 fn change_editor_mode(
@@ -384,7 +425,13 @@ pub fn editor_controller() -> impl Bundle {
     );
 }
 
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct SpawnPlane;
 
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct SerializePlane;
 
 
 #[derive(InputAction, Event)]

@@ -227,7 +227,8 @@ fn vertical_right_panel() -> impl Bundle {
     (
         Node {
             padding: UiRect::all(Val::Px(12.0)),
-            display: Display::Flex,
+            // display: Display::Flex,
+            display: Display::None,
             width: Val::Percent(16.0),
             height: Val::Percent(100.0),
             top: Val::Percent(0.0),

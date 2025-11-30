@@ -22,6 +22,7 @@ pub struct PlaneToEdit{
 }
 
 impl PlaneToEdit {
+    // Inserted into already created terrain
     pub fn dummy() -> Self {
         PlaneToEdit {
             width: 0.0,
@@ -29,7 +30,11 @@ impl PlaneToEdit {
             subdivisions: 0
         }
     }
-
+    pub fn new(width: f32, height: f32, subdivisions: u32) -> Self {
+        PlaneToEdit {
+            width, height, subdivisions
+        }
+    }
     pub fn ray_intersection(
         &self, 
         loc: Vec3, 

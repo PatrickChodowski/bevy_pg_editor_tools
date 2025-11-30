@@ -13,11 +13,12 @@ use bevy::ui_widgets::{
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy_pg_core::prelude::GameStatePlay;
 
+use crate::controller::SerializePlane;
 use crate::prelude::{
     ToggleMarkersVis, ToggleMultiGhost, ToggleSnapNav, EditorSettings, 
     ToggleSpawnersVis, ToggleGhostAxis, ToggleGhostMode, GhostTransformAxis, 
     GhostTransformMode, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
-    EditorMode, UnghostAll, TriggerThumbnails
+    EditorMode, UnghostAll, TriggerThumbnails, SpawnPlane
 };
 
 pub struct PGEditorUIPlugin;
@@ -85,7 +86,7 @@ fn init_editor_ui(
             left: px(0.0),
             top: px(0.0),
             width:px(300.0),
-            height: px(700.0),
+            height: px(980.0),
             ..default()
         },
         DespawnOnExit(GameStatePlay::Editor),
@@ -111,7 +112,10 @@ fn init_editor_ui(
         brush_radio(&mut commands, &editor_settings),
         brush_radius_slider(&mut commands, &editor_settings),
         terrain_color(&mut commands, &editor_settings),
-        empty_row(&mut commands, 35.0),
+        empty_row(&mut commands, 15.0),
+        label_section(&mut commands, "Plane Settings"),
+        new_plane_settings(&mut commands, &editor_settings),
+        empty_row(&mut commands, 40.0),
         buttons(&mut commands),
         empty_row(&mut commands, 10.0),
         other_buttons(&mut commands)
@@ -812,4 +816,103 @@ fn brush_radius_slider(
             ),
         ]
     )).id()
+}
+
+
+fn new_plane_settings(
+    commands: &mut Commands,
+    editor_settings: &Res<EditorSettings>
+) -> Entity {
+
+    let local_root = commands.spawn((
+        Node {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Stretch,
+            justify_content: JustifyContent::Start,
+            row_gap: px(5.0),
+            ..default()
+        },
+        children![
+            (Text::new("Width")),
+            (
+                slider(
+                    SliderProps {
+                        max: 100.0,
+                        value: editor_settings.plane_width,
+                        min: 0.0,
+                        ..default()
+                    },
+                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+                ),
+                observe(slider_self_update),
+                observe(
+                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+                        editor_settings.plane_width = value_change.value;
+                    }
+                )
+            ),
+            (Text::new("Height")),
+            (
+                slider(
+                    SliderProps {
+                        max: 100.0,
+                        value: editor_settings.plane_height,
+                        min: 0.0,
+                        ..default()
+                    },
+                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+                ),
+                observe(slider_self_update),
+                observe(
+                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+                        editor_settings.plane_height = value_change.value;
+                    }
+                )
+            ),
+            (Text::new("Subdivisions")),
+            (
+                slider(
+                    SliderProps {
+                        max: 50.0,
+                        value: editor_settings.plane_subdivisions as f32,
+                        min: 0.0,
+                        ..default()
+                    },
+                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+                ),
+                observe(slider_self_update),
+                observe(
+                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+                        editor_settings.plane_subdivisions = value_change.value as u32;
+                    }
+                )
+            ),
+            (
+                button(
+                    ButtonProps::default(),(PlaneControls, EditorControls),
+                    Spawn((Text::new("Spawn Plane"), ThemedText))
+                ),
+                observe(|_activate: On<Activate>, mut commands: Commands| {
+                    commands.trigger(SpawnPlane);
+                })    
+            ),
+            (
+                button(
+                    ButtonProps {
+                        variant: ButtonVariant::Primary,
+                        ..default()
+                    },(PlaneControls, EditorControls),
+                    Spawn((Text::new("Serialize Planes"), ThemedText))
+                ),
+                observe(|_activate: On<Activate>, mut commands: Commands| {
+                    commands.trigger(SerializePlane);
+                })    
+            )
+        ]
+    )).id();
+
+
+    return local_root;
+
 }

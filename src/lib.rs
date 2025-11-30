@@ -27,7 +27,7 @@ use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use ui::PGEditorUIPlugin;
-use vertex::{PGEditorVertexPlugin, SpawnVertices};
+use vertex::PGEditorVertexPlugin;
 
 use crate::brushes::BrushType;
 
@@ -265,7 +265,7 @@ pub mod prelude {
         PGEditorControllerPlugin, editor_controller, EditorController, 
         TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
         ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost, 
-        ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel
+        ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, SpawnPlane
     };
     pub use crate::ghost::{
         PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, 
