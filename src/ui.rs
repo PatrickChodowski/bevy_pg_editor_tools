@@ -118,6 +118,9 @@ fn init_editor_ui(
     ];
     commands.entity(root).add_children(&children);
 
+    // To set enable/disable on widget
+    commands.trigger(ChangeEditorMode{value: editor_settings.mode});
+
 }
 
 #[derive(Component)]
@@ -163,6 +166,8 @@ fn update_colors(
             let clr: Color = colors.hsl_color.into();
             commands.entity(children[0]).insert(BackgroundColor(clr));
             editor_settings.color = clr;
+            // Restart brush
+            commands.trigger(ChangeBrush{value: editor_settings.brush_id});
         }
     }
 }

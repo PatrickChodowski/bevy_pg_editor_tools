@@ -12,7 +12,7 @@ use rand::Rng;
 use rand::seq::IndexedRandom;
 use bevy_pg_nav::prelude::NavMesh;
 
-use crate::prelude::EditorSettings;
+use crate::prelude::{EditorMode, EditorSettings};
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
 use crate::ghost::{EditorAsset, EditorGhostSettings, Ghost, editor_asset_bundle};
 
@@ -77,26 +77,10 @@ pub fn brush_select_controller() -> impl Bundle {
         BrushSelectController,
         Actions::<BrushSelectController>::spawn(
             SpawnWith(|context: &mut ActionSpawner<_>| {
-            let member1 = context
-                .spawn((Action::<BrushSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyJ]))
-                .id();
-            let member2 = context
-                .spawn((Action::<BrushSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Left]))
-                .id();
-            context.spawn((Action::<BrushSelectUpdate>::new(), Chord::new([member1, member2])));
-
+                 context.spawn((Action::<BrushSelectUpdate>::new(), Down::default(), bindings![MouseButton::Left]));
         })) 
     );
 }
-
-
-#[derive(InputAction)]
-#[action_output(bool)]
-struct BrushSelectUpdate1;
-
-#[derive(InputAction)]
-#[action_output(bool)]
-struct BrushSelectUpdate2;
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -109,9 +93,13 @@ fn start_brush(
     mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
     mut materials:     ResMut<Assets<StandardMaterial>>,
-    editor_settings:    Res<EditorSettings>,
+    editor_settings:   Res<EditorSettings>,
     brushes:           Query<Entity, With<BrushMarker>>
 ){
+    if editor_settings.mode != EditorMode::Brushes {
+        return;
+    }
+
     for brush_entity in brushes.iter(){
         commands.entity(brush_entity).despawn();
     }
@@ -155,8 +143,13 @@ fn update_brush(
     _trigger:               On<Fire<BrushSelectUpdate>>,
     input_data:             Res<PointerData>,
     mut brush_transform:    Single<&mut Transform, With<BrushMarker>>,
-    mut brush:              ResMut<Brush>
+    mut brush:              ResMut<Brush>,
+    editor_settings:   Res<EditorSettings>
 ){
+    if editor_settings.mode != EditorMode::Brushes {
+        return;
+    }
+
     let Some(world_pos) = input_data.world_pos else {return};
     if world_pos.xz() != brush.loc.xz(){
         brush.loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
@@ -168,7 +161,12 @@ fn end_brush(
     _trigger:       On<Cancel<BrushSelectUpdate>>,
     mut commands:   Commands,
     brush_entity:   Single<Entity, With<BrushMarker>>,
+    editor_settings:   Res<EditorSettings>
 ){
+    if editor_settings.mode != EditorMode::Brushes {
+        return;
+    }
+
     commands.write_message(BrushDone);
     commands.entity(*brush_entity).despawn();
 }

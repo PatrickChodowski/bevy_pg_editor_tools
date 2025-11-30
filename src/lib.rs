@@ -27,7 +27,7 @@ use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use ui::PGEditorUIPlugin;
-use vertex::{PGEditorVertexPlugin};
+use vertex::{PGEditorVertexPlugin, SpawnVertices};
 
 use crate::brushes::BrushType;
 
@@ -37,7 +37,7 @@ pub struct PGEditorPlugin{
     pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub markers_mapping: fn(name: String) -> Marker,
     pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner,
-    pub brush_mapping: fn(commands: &mut Commands, terrain_chunks: &Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>, brush_id: usize) -> Box<dyn BrushType>,
+    pub brush_mapping: fn(commands: &mut Commands, brush_id: usize, editor_settings: &ResMut<EditorSettings>) -> Box<dyn BrushType>,
     pub brush_id_labels: Vec<(usize, &'static str)>,
     pub vertex_radius: f32
 }
@@ -171,6 +171,10 @@ fn init_editor(
             marker_visibility
         ));
     }
+
+    for entity in terrains.iter() {
+        commands.entity(entity).insert(PlaneToEdit::dummy());
+    };
     
 }
 
@@ -261,7 +265,7 @@ pub mod prelude {
         PGEditorControllerPlugin, editor_controller, EditorController, 
         TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
         ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost, 
-        ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorSettings
+        ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel
     };
     pub use crate::ghost::{
         PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, 
@@ -275,7 +279,7 @@ pub mod prelude {
     pub use crate::planes::{PlaneToEdit, plane_mesh};
     pub use crate::vertex::{
         SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, 
-        TerrainVertexController, VertexRefs, terrain_vertex_controller
+        TerrainVertexController, VertexRefs, terrain_vertex_controller, ShowVertices, HideVertices
     };
     pub use crate::terrain_brushes::{
         TerrainHeightBrush, TerrainColorBrush, HeightBrushType, ColorBrushType

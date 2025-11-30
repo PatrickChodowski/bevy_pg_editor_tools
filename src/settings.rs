@@ -1,12 +1,10 @@
 use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::prelude::*;
-use bevy_pg_scenes::prelude::TerrainChunk;
 
 use crate::brushes::{NothingBrush, BrushType};
 use crate::ghost::{GhostTransformAxis, GhostTransformMode};
-use crate::planes::PlaneToEdit;
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct EditorSettings {
     pub ghost_transform_mode: GhostTransformMode,
     pub ghost_transform_axis: GhostTransformAxis,
@@ -17,7 +15,7 @@ pub struct EditorSettings {
     pub show_spawners: bool,
     pub show_markers: bool,
     pub mode: EditorMode,
-    pub brush_mapping: fn(commands: &mut Commands, terrain_chunks: &Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>, brush_id: usize) -> Box<dyn BrushType>,
+    pub brush_mapping: fn(commands: &mut Commands, brush_id: usize, editor_settings: &ResMut<EditorSettings>) -> Box<dyn BrushType>,
     pub brush_id_labels: Vec<(usize, &'static str)>,
     pub brush_id: usize,
     pub brush_radius: f32,
@@ -25,7 +23,7 @@ pub struct EditorSettings {
 }
 impl EditorSettings {
     pub fn new(
-        brush_mapping: fn(commands: &mut Commands, terrain_chunks: &Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>, brush_id: usize) -> Box<dyn BrushType>,
+        brush_mapping: fn(commands: &mut Commands, brush_id: usize, editor_settings: &ResMut<EditorSettings>) -> Box<dyn BrushType>,
         brush_id_labels: Vec<(usize, &'static str)>
     ) -> Self {
         Self {

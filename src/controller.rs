@@ -10,9 +10,9 @@ use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, S
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
+use crate::assets_panel::EditorAssetPanel;
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
-use crate::planes::PlaneToEdit;
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::settings::{EditorMode, EditorSettings};
 use crate::vertex::PlaneVertex;
@@ -34,7 +34,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(set_z_axis)
         .add_observer(set_x_axis)
 
-
         .add_observer(change_value)
         .add_observer(start_change_value)
         .add_observer(end_change_value)
@@ -53,7 +52,8 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_multi_ghost)
         .add_observer(change_brush)
         .add_observer(turn_off_editor)
-        .add_observer(toggle_settings)
+        .add_observer(toggle_editor_panel)
+        .add_observer(toggle_assets_panel)
         .add_observer(change_editor_mode)
         ;
     }
@@ -117,15 +117,10 @@ fn turn_off_editor(
 fn change_brush(
     trigger: On<ChangeBrush>,
     mut commands: Commands,
-    mut editor_settings: ResMut<EditorSettings>, 
-    terrain_chunks: Query<Entity, (With<TerrainChunk>, With<PlaneToEdit>)>,
-    vertices: Query<Entity, With<PlaneVertex>>,
+    mut editor_settings: ResMut<EditorSettings>
 ){
-    for entity in vertices.iter(){
-        commands.entity(entity).despawn();
-    }
     editor_settings.brush_id = trigger.value;
-    editor_settings.brush_typ = (editor_settings.brush_mapping)(&mut commands, &terrain_chunks, trigger.value);
+    editor_settings.brush_typ = (editor_settings.brush_mapping)(&mut commands, trigger.value, &editor_settings);
 }
 
 
@@ -295,19 +290,14 @@ pub fn editor_controller() -> impl Bundle {
                     bindings![KeyCode::KeyU]
                 ),
                 (
-                    Action::<ToggleEditorSettings>::new(),
+                    Action::<ToggleEditorPanel>::new(),
                     Press::default(),
                     bindings![KeyCode::Tab]
                 ),
                 (
-                    Action::<ToggleMultiGhost>::new(),
+                    Action::<ToggleAssetsPanel>::new(),
                     Press::default(),
                     bindings![KeyCode::ShiftLeft]
-                ),
-                (
-                    Action::<TriggerThumbnails>::new(),
-                    Press::default(),
-                    bindings![KeyCode::KeyL] // L as I have no other idea for name
                 ),
                 (
                     Action::<SaveScene>::new(),
@@ -673,8 +663,11 @@ pub struct NavMeshGeneration;
 
 #[derive(InputAction)]
 #[action_output(bool)]
-pub struct ToggleEditorSettings;
+pub struct ToggleEditorPanel;
 
+#[derive(InputAction)]
+#[action_output(bool)]
+pub struct ToggleAssetsPanel;
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
@@ -687,8 +680,8 @@ pub struct ToggleMultiGhost {
 pub struct UnghostAll;
 
 
-fn toggle_settings(
-    _trigger: On<Fire<ToggleEditorSettings>>,
+fn toggle_editor_panel(
+    _trigger: On<Fire<ToggleEditorPanel>>,
     mut node: Single<&mut Node, With<EditorControlsPanel>>
 ){
     match node.display {
@@ -700,8 +693,23 @@ fn toggle_settings(
         }
         _ => {}
     }
-
 }
+
+fn toggle_assets_panel(
+    _trigger: On<Fire<ToggleAssetsPanel>>,
+    mut node: Single<&mut Node, With<EditorAssetPanel>>
+){
+    match node.display {
+        Display::None => {
+            node.display = Display::Flex;
+        }
+        Display::Flex => {
+            node.display = Display::None;
+        }
+        _ => {}
+    }
+}
+
 
 fn set_translation_mode(
     _trigger:    On<Fire<SetTranslationMode>>,

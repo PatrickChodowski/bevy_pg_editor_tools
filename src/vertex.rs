@@ -30,16 +30,40 @@ impl Plugin for PGEditorVertexPlugin {
         .insert_resource(VertexPluginSettings::new(
             self.vertex_radius
         ))
-        .add_observer(init_plane_to_edit)
+        .add_observer(on_spawn_vertices)
+        .add_observer(on_plane_edit_add)
         .add_observer(on_remove_plane)
         .add_observer(select_vertex)
         .add_observer(deselect_vertex)
         .add_observer(deselect_all_vertices)
         .add_systems(Update, vertex_changed)
         .add_observer(serialize_planes)
+        .add_observer(show_vertices)
+        .add_observer(hide_vertices)
         ;
     }
 }
+
+fn show_vertices(
+    _trigger: On<ShowVertices>,
+    mut query:  Query<&mut Visibility, With<PlaneVertex>>, 
+){
+    for mut vis in query.iter_mut(){
+        *vis = Visibility::Visible;
+    }
+}
+
+
+fn hide_vertices(
+    _trigger: On<HideVertices>,
+    mut query:  Query<&mut Visibility, With<PlaneVertex>>
+){
+    for mut vis in query.iter_mut(){
+        *vis = Visibility::Hidden;
+    }
+}
+
+
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -169,14 +193,21 @@ pub struct SpawnVertices{
     pub plane_entity: Entity
 }
 
-fn init_plane_to_edit(
-    trigger:      On<SpawnVertices>,
+#[derive(Event)]
+pub struct ShowVertices;
+
+#[derive(Event)]
+pub struct HideVertices;
+
+
+fn on_plane_edit_add(
+    trigger:      On<Add, PlaneToEdit>,
     mut commands: Commands,
-    query:        Query<&Mesh3d, With<PlaneToEdit>>,
+    query:        Query<&Mesh3d>,
     meshes:       Res<Assets<Mesh>>,
     vertex_refs:  Res<VertexRefs>
 ){
-    let Ok(mesh3d) = query.get(trigger.plane_entity) else {return;};
+    let Ok(mesh3d) = query.get(trigger.entity) else {return;};
     let Some(mesh) = meshes.get(&mesh3d.0) else {return;};
     let (v_pos, v_clr) = extract_mesh_data(mesh);
     let mut vertices: Vec<Entity> = Vec::new();
@@ -187,8 +218,38 @@ fn init_plane_to_edit(
             NotShadowCaster,
             NotShadowReceiver,
             Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(1.0)),
+            PlaneVertex::new(index, pos, &v_clr[index], vertex_refs.radius, trigger.entity),
+            DespawnOnExit(GameStatePlay::Editor),
+            Visibility::Hidden
+        )).id();
+        vertices.push(entity);
+    }
+    commands.entity(trigger.entity).add_children(&vertices);
+}
+
+
+fn on_spawn_vertices(
+    trigger:      On<SpawnVertices>,
+    mut commands: Commands,
+    query:        Query<&Mesh3d, With<PlaneToEdit>>,
+    meshes:       Res<Assets<Mesh>>,
+    vertex_refs:  Res<VertexRefs>
+){
+    let Ok(mesh3d) = query.get(trigger.plane_entity) else {return;};
+    let Some(mesh) = meshes.get(&mesh3d.0) else {return;};
+    let (v_pos, v_clr) = extract_mesh_data(mesh);
+    let mut vertices: Vec<Entity> = Vec::new();
+    info!("on spawn vertices");
+    for (index, pos) in v_pos.iter().enumerate(){
+        let entity = commands.spawn((
+            vertex_refs.mat_handle.clone(),
+            vertex_refs.mesh_handle.clone(),
+            NotShadowCaster,
+            NotShadowReceiver,
+            Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(1.0)),
             PlaneVertex::new(index, pos, &v_clr[index], vertex_refs.radius, trigger.plane_entity),
-            DespawnOnExit(GameStatePlay::Editor)
+            DespawnOnExit(GameStatePlay::Editor),
+            Visibility::Hidden
         )).id();
         vertices.push(entity);
     }
@@ -202,7 +263,7 @@ fn on_remove_plane(
 ){
     for (entity, plane_vertex) in vertex.iter(){
         if plane_vertex.plane_entity == trigger.entity{
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 }
@@ -213,7 +274,7 @@ fn select_vertex(
     mut commands:  Commands,
     vertex_refs:   Res<VertexRefs>,
 ){
-    commands.entity(trigger.entity).insert(vertex_refs.selected_mat_handle.clone());
+    commands.entity(trigger.entity).try_insert(vertex_refs.selected_mat_handle.clone());
 }
 
 fn deselect_vertex(
@@ -221,7 +282,7 @@ fn deselect_vertex(
     mut commands:  Commands,
     vertex_refs:   Res<VertexRefs>,
 ){
-    commands.entity(trigger.entity).insert(vertex_refs.mat_handle.clone());
+    commands.entity(trigger.entity).try_insert(vertex_refs.mat_handle.clone());
 }
 
 fn deselect_all_vertices(
@@ -230,7 +291,7 @@ fn deselect_all_vertices(
     query:  Query<Entity, With<SelectedVertex>>
 ){
     for entity in query.iter(){
-        commands.entity(entity).remove::<SelectedVertex>();
+        commands.entity(entity).try_remove::<SelectedVertex>();
     }
 }
 
