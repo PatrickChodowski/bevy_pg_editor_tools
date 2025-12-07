@@ -6,7 +6,7 @@ use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{GameStatePlay, rotate_point_2d};
-use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh};
+use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh, NavConfig};
 use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -45,6 +45,7 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(delete_object)
         .add_observer(navmesh_generation)
 
+        .add_observer(toggle_navmesh_debug)
         .add_observer(toggle_markers_vis)
         .add_observer(toggle_spawners_vis)
         .add_observer(toggle_ghost_axis)
@@ -61,6 +62,13 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(serialize_plane)
         ;
     }
+}
+
+fn toggle_navmesh_debug(
+    trigger: On<ToggleNavmeshDebug>,
+    mut navconfig:  ResMut<NavConfig>
+){
+    navconfig.debug = trigger.value;
 }
 
 fn serialize_plane(
@@ -654,6 +662,10 @@ fn change_value(
     }
 }
 
+#[derive(Event)]
+pub struct ToggleNavmeshDebug {
+    pub value: bool
+}
 
 #[derive(InputAction)]
 #[action_output(bool)]
