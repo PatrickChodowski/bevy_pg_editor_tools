@@ -287,4 +287,5 @@ fn vertex_changed(
     }
     plane_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
     plane_mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, v_clr);
+    plane_mesh.compute_normals();
 }

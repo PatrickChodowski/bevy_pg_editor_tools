@@ -1117,7 +1117,6 @@ dependencies = [
 [[package]]
 name = "bevy_pg_nav"
 version = "1.17.0"
-source = "git+https://www.github.com/PatrickChodowski/bevy_pg_nav#209b8314f4fbce52ffeafc63c362cd4828a8540a"
 dependencies = [
  "bevy",
  "bevy_common_assets",
@@ -1135,7 +1134,6 @@ dependencies = [
 [[package]]
 name = "bevy_pg_scenes"
 version = "0.1.0"
-source = "git+https://www.github.com/PatrickChodowski/bevy_pg_scenes#b81894e9d82814649370c7a88fe251f4b0f63433"
 dependencies = [
  "bevy",
  "bevy_common_assets",
