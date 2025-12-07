@@ -15,7 +15,6 @@ bevy = { version = "0.17", default-features = true, features = [
 ]}
 bevy_pg_core = {git="https://www.github.com/PatrickChodowski/bevy_pg_core"}
 bevy_pg_nav = {git="https://www.github.com/PatrickChodowski/bevy_pg_nav"}
-# bevy_pg_nav = {path="../bevy_pg_nav"}
 bevy_pg_scenes = {git="https://www.github.com/PatrickChodowski/bevy_pg_scenes"}
 log = { version = "0.4", features = [
     "max_level_debug",
