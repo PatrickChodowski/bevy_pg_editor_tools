@@ -30,17 +30,17 @@ incremental = true
 # codegen-backend = "cranelift"
 # debug = "line-tables-only"
 
-[profile.dev.package."*"]
-codegen-backend = "llvm"
+# [profile.dev.package."*"]
+# codegen-backend = "llvm"
 
-[profile.test.package."*"]
-codegen-backend = "llvm"
+# [profile.test.package."*"]
+# codegen-backend = "llvm"
 
-[profile.release]
-codegen-backend = "llvm"
+# [profile.release]
+# codegen-backend = "llvm"
 
-[profile.web]
-codegen-backend = "llvm"
+# [profile.web]
+# codegen-backend = "llvm"
 
 # [build]
 # # Requires setting `CARGO=1` or it breaks `Bevy CLI`: https://github.com/TheBevyFlock/bevy_cli/issues/429
