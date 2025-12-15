@@ -10,7 +10,7 @@ use bevy_pg_core::prelude::PointerData;
 use dyn_clone::DynClone;
 use rand::Rng;
 use rand::seq::IndexedRandom;
-use bevy_pg_nav::prelude::NavMesh;
+use bevy_pg_nav::prelude::PGNavmesh;
 
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
@@ -259,7 +259,7 @@ impl BrushType for ScatterBrush {
                 ResMut<Assets<StandardMaterial>>,
                 Res<AssetServer>,
                 Commands,
-                Res<NavMesh>,
+                Res<PGNavmesh>,
                 Res<EditorGhostSettings>
             )> = SystemState::new(world);
 

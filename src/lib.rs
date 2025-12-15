@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static,TerrainChunk};
-use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player};
+use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static};
+use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
 
 pub mod assets_panel;

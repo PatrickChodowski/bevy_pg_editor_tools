@@ -5,9 +5,9 @@ use bevy::platform::collections::HashMap;
 use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
-use bevy_pg_core::prelude::{GameStatePlay, rotate_point_2d};
-use bevy_pg_nav::prelude::{GenerateNavMesh, NavMesh, NavConfig};
-use bevy_pg_scenes::prelude::{TerrainChunk, CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
+use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
+use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
+use bevy_pg_scenes::prelude::{CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
@@ -544,7 +544,7 @@ fn change_value(
     trigger:        On<Fire<ChangeValue>>,
     mut transforms: Query<&mut Transform, With<Ghost>>,
     ghs:            Res<EditorSettings>,
-    navmesh:        Res<NavMesh>
+    navmesh:        Res<PGNavmesh>
 ){
 
     let delta_i32 = trigger.value as i32;

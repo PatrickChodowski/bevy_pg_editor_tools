@@ -6,7 +6,7 @@ use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use bevy::prelude::Press;
 use std::f32::consts::FRAC_PI_2;
-use bevy_pg_nav::prelude::NavMesh;
+use bevy_pg_nav::prelude::PGNavmesh;
 use bevy_pg_core::prelude::{MainCamera, GameState, GameStatePlay, AABB, PointerData};
 use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static};
 
@@ -600,7 +600,7 @@ fn ghost_transform_drag(
     mut transforms: Query<&mut Transform, With<Ghost>>,
     pointer:        Res<PointerData>,
     camera:         Single<(&Camera, &GlobalTransform), With<MainCamera>>,
-    navmesh:        Option<Res<NavMesh>>,
+    navmesh:        Option<Res<PGNavmesh>>,
     ghs:            Option<Res<EditorSettings>>,
     game_state:     Option<Res<State<GameStatePlay>>>,
     ctcs:           Option<Res<CurrentTransformChanges>>,
@@ -639,7 +639,7 @@ fn ghost_transform_drag(
             let delta_y = trigger.delta.y*factor;
 
             let Ok(previous_cursor_ray) = camera.viewport_to_world(camera_transform, cursor_pos+Vec2::new(delta_x, delta_y)) else {return};
-            let Some((previous_world_pos, _dist, _index, _polygon_type)) = navmesh.ray_intersection(
+            let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
                 previous_cursor_ray.origin, 
                 *previous_cursor_ray.direction
             ) else {return};
