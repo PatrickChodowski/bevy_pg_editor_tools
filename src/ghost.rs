@@ -639,10 +639,15 @@ fn ghost_transform_drag(
             let delta_y = trigger.delta.y*factor;
 
             let Ok(previous_cursor_ray) = camera.viewport_to_world(camera_transform, cursor_pos+Vec2::new(delta_x, delta_y)) else {return};
+
+            let previous_origin = Vec3A::from(previous_cursor_ray.origin);
+            let previous_direction = Vec3A::from(*previous_cursor_ray.direction);
+
             let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
-                previous_cursor_ray.origin, 
-                *previous_cursor_ray.direction
+                &previous_origin,
+                &previous_direction
             ) else {return};
+
             let world_delta = world_pos.xz() - previous_world_pos.xz();
 
             for mut transform in transforms.iter_mut(){
