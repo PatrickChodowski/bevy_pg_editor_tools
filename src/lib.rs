@@ -78,7 +78,7 @@ impl Plugin for PGEditorPlugin {
         })
         .add_systems(OnEnter(GameStatePlay::Editor), init_editor)
         .add_systems(OnExit(GameStatePlay::Editor), exit_editor)
-        .add_systems(Update, export_obj_system.run_if(input_just_pressed(KeyCode::Digit6)))
+        // .add_systems(Update, export_obj_system.run_if(input_just_pressed(KeyCode::Digit6)))
         ;
     }
 }
