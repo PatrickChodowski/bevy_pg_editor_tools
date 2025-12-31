@@ -600,7 +600,7 @@ fn ghost_transform_drag(
     mut transforms: Query<&mut Transform, With<Ghost>>,
     pointer:        Res<PointerData>,
     camera:         Single<(&Camera, &GlobalTransform), With<MainCamera>>,
-    navmesh:        Option<Res<PGNavmesh>>,
+    navs:           Query<&PGNavmesh>,
     ghs:            Option<Res<EditorSettings>>,
     game_state:     Option<Res<State<GameStatePlay>>>,
     ctcs:           Option<Res<CurrentTransformChanges>>,
@@ -614,7 +614,7 @@ fn ghost_transform_drag(
         return;
     }
     
-    let Some(navmesh) = navmesh else {return};
+    // let Some(navmesh) = navmesh else {return};
 
     if trigger.entity != *window_entity {
         return;
@@ -643,22 +643,22 @@ fn ghost_transform_drag(
             let previous_origin = Vec3A::from(previous_cursor_ray.origin);
             let previous_direction = Vec3A::from(*previous_cursor_ray.direction);
 
-            let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
-                &previous_origin,
-                &previous_direction
-            ) else {return};
+            // let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
+            //     &previous_origin,
+            //     &previous_direction
+            // ) else {return};
 
-            let world_delta = world_pos.xz() - previous_world_pos.xz();
+            // let world_delta = world_pos.xz() - previous_world_pos.xz();
 
-            for mut transform in transforms.iter_mut(){
-                transform.translation.x -= world_delta.x;
-                transform.translation.z -= world_delta.y;
-                if ghs.as_ref().unwrap().snap_nav {
-                    if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
-                        transform.translation.y = height;
-                    }
-                }   
-            }
+            // for mut transform in transforms.iter_mut(){
+            //     transform.translation.x -= world_delta.x;
+            //     transform.translation.z -= world_delta.y;
+            //     if ghs.as_ref().unwrap().snap_nav {
+            //         if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+            //             transform.translation.y = height;
+            //         }
+            //     }   
+            // }
         }
     }
 }

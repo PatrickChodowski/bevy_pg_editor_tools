@@ -259,7 +259,7 @@ impl BrushType for ScatterBrush {
                 ResMut<Assets<StandardMaterial>>,
                 Res<AssetServer>,
                 Commands,
-                Res<PGNavmesh>,
+                Query<&PGNavmesh>,
                 Res<EditorGhostSettings>
             )> = SystemState::new(world);
 
@@ -294,9 +294,9 @@ impl BrushType for ScatterBrush {
 
             let mut pos = Vec3::new(loc.x+nudge_x, loc.y, loc.y+nudge_z);
 
-            if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
-                pos.y = height;
-            }
+            // if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
+            //     pos.y = height;
+            // }
 
             let transform = Transform::from_translation(pos).with_rotation(q).with_scale(Vec3::splat(scale));
 

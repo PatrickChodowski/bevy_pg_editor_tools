@@ -544,7 +544,7 @@ fn change_value(
     trigger:        On<Fire<ChangeValue>>,
     mut transforms: Query<&mut Transform, With<Ghost>>,
     ghs:            Res<EditorSettings>,
-    navmesh:        Res<PGNavmesh>
+    // navmesh:        Res<PGNavmesh>
 ){
 
     let delta_i32 = trigger.value as i32;
@@ -588,18 +588,18 @@ fn change_value(
                     GhostTransformAxis::X => {
                         transform.translation.x += sd;
                         if ghs.snap_nav {
-                            if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
-                                transform.translation.y = height;
-                            }
+                            // if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                            //     transform.translation.y = height;
+                            // }
                         }     
                     }
                     GhostTransformAxis::Y => {transform.translation.y += sd}
                     GhostTransformAxis::Z => {
                         transform.translation.z += sd;
                         if ghs.snap_nav {
-                            if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
-                                transform.translation.y = height;
-                            }
+                            // if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                            //     transform.translation.y = height;
+                            // }
                         }  
                     }
                     _ => {}
@@ -616,9 +616,9 @@ fn change_value(
                             transform.translation = rotate_point_2d(&transform.translation, &origin, sd);
                             transform.rotate_y(-sd);
                             if ghs.snap_nav {
-                                if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
-                                    transform.translation.y = height;
-                                }
+                                // if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                                //     transform.translation.y = height;
+                                // }
                             }  
                         }
                     }

@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static};
 use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
@@ -9,6 +9,7 @@ pub mod brushes;
 pub mod controller;
 pub mod ghost;
 pub mod tracker;
+pub mod export_scene_obj;
 pub mod thumbnails;
 pub mod noises;
 pub mod planes;
@@ -29,7 +30,7 @@ use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use ui::PGEditorUIPlugin;
 use vertex::PGEditorVertexPlugin;
 
-use crate::brushes::BrushType;
+use crate::{brushes::BrushType, export_scene_obj::export_obj_system};
 
 
 pub struct PGEditorPlugin{
@@ -77,6 +78,7 @@ impl Plugin for PGEditorPlugin {
         })
         .add_systems(OnEnter(GameStatePlay::Editor), init_editor)
         .add_systems(OnExit(GameStatePlay::Editor), exit_editor)
+        .add_systems(Update, export_obj_system.run_if(input_just_pressed(KeyCode::Digit6)))
         ;
     }
 }
