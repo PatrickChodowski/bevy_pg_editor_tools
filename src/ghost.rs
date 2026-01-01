@@ -614,7 +614,9 @@ fn ghost_transform_drag(
         return;
     }
     
-    // let Some(navmesh) = navmesh else {return};
+    if navs.is_empty(){
+        return;
+    }
 
     if trigger.entity != *window_entity {
         return;
@@ -639,26 +641,33 @@ fn ghost_transform_drag(
             let delta_y = trigger.delta.y*factor;
 
             let Ok(previous_cursor_ray) = camera.viewport_to_world(camera_transform, cursor_pos+Vec2::new(delta_x, delta_y)) else {return};
+            let mut maybe_previous_world_pos: Option<Vec3> = None;
 
-            let previous_origin = Vec3A::from(previous_cursor_ray.origin);
-            let previous_direction = Vec3A::from(*previous_cursor_ray.direction);
+            for navmesh in navs.iter(){
+                if let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
+                    &previous_cursor_ray.origin,
+                    &previous_cursor_ray.direction
+                ) {
+                    maybe_previous_world_pos = Some(previous_world_pos);
+                    break;
+                }
+            }
 
-            // let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
-            //     &previous_origin,
-            //     &previous_direction
-            // ) else {return};
+            let Some(previous_world_pos) = maybe_previous_world_pos else {return};
+            let world_delta = world_pos.xz() - previous_world_pos.xz();
 
-            // let world_delta = world_pos.xz() - previous_world_pos.xz();
-
-            // for mut transform in transforms.iter_mut(){
-            //     transform.translation.x -= world_delta.x;
-            //     transform.translation.z -= world_delta.y;
-            //     if ghs.as_ref().unwrap().snap_nav {
-            //         if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
-            //             transform.translation.y = height;
-            //         }
-            //     }   
-            // }
+            for mut transform in transforms.iter_mut(){
+                transform.translation.x -= world_delta.x;
+                transform.translation.z -= world_delta.y;
+                if ghs.as_ref().unwrap().snap_nav {
+                    for navmesh in navs.iter(){
+                        if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                            transform.translation.y = height;
+                            break;
+                        }
+                    }
+                }   
+            }
         }
     }
 }

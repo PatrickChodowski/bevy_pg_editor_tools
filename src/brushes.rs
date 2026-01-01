@@ -263,7 +263,7 @@ impl BrushType for ScatterBrush {
                 Res<EditorGhostSettings>
             )> = SystemState::new(world);
 
-        let (mut meshes, mut materials, ass, mut commands, navmesh, ghost_settings) = system_state.get_mut(world);
+        let (mut meshes, mut materials, ass, mut commands, navs, ghost_settings) = system_state.get_mut(world);
 
         for loc in locs.iter(){
             let uloc = (loc.x as u32, loc.y as u32);
@@ -294,9 +294,12 @@ impl BrushType for ScatterBrush {
 
             let mut pos = Vec3::new(loc.x+nudge_x, loc.y, loc.y+nudge_z);
 
-            // if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
-            //     pos.y = height;
-            // }
+            for navmesh in navs.iter(){
+                if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
+                    pos.y = height;
+                    break;
+                }
+            }
 
             let transform = Transform::from_translation(pos).with_rotation(q).with_scale(Vec3::splat(scale));
 
