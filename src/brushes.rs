@@ -295,7 +295,7 @@ impl BrushType for ScatterBrush {
             let mut pos = Vec3::new(loc.x+nudge_x, loc.y, loc.y+nudge_z);
 
             for navmesh in navs.iter(){
-                if let Some((_poly, height)) = navmesh.get_polygon_height(*loc){
+                if let Some((_poly, height)) = navmesh.get_polygon_height(loc){
                     pos.y = height;
                     break;
                 }

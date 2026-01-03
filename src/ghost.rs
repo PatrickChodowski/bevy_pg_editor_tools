@@ -644,7 +644,7 @@ fn ghost_transform_drag(
             let mut maybe_previous_world_pos: Option<Vec3> = None;
 
             for navmesh in navs.iter(){
-                if let Some((previous_world_pos, _dist, _index)) = navmesh.ray_intersection(
+                if let Some((previous_world_pos, _index)) = navmesh.ray_intersection(
                     &previous_cursor_ray.origin,
                     &previous_cursor_ray.direction
                 ) {
@@ -661,7 +661,7 @@ fn ghost_transform_drag(
                 transform.translation.z -= world_delta.y;
                 if ghs.as_ref().unwrap().snap_nav {
                     for navmesh in navs.iter(){
-                        if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                        if let Some((_poly, height)) = navmesh.get_polygon_height(&transform.translation.xz()){
                             transform.translation.y = height;
                             break;
                         }

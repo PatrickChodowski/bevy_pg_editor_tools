@@ -590,7 +590,7 @@ fn change_value(
                         if ghs.snap_nav {
 
                             for navmesh in navs.iter(){
-                                if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                                if let Some((_poly, height)) = navmesh.get_polygon_height(&transform.translation.xz()){
                                     transform.translation.y = height;
                                     break;
                                 }
@@ -603,7 +603,7 @@ fn change_value(
                         transform.translation.z += sd;
                         if ghs.snap_nav {
                             for navmesh in navs.iter(){
-                                if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                                if let Some((_poly, height)) = navmesh.get_polygon_height(&transform.translation.xz()){
                                     transform.translation.y = height;
                                     break;
                                 }
@@ -625,7 +625,7 @@ fn change_value(
                             transform.rotate_y(-sd);
                             if ghs.snap_nav {
                                 for navmesh in navs.iter(){
-                                    if let Some((_poly, height)) = navmesh.get_polygon_height(transform.translation.xz()){
+                                    if let Some((_poly, height)) = navmesh.get_polygon_height(&transform.translation.xz()){
                                         transform.translation.y = height;
                                         break;
                                     }
