@@ -207,10 +207,10 @@ fn spawn_asset_button(
             align_content: AlignContent::Center,
             width: Val::Px(IMG_DIM),
             height: Val::Px(IMG_DIM),
+            border_radius: BorderRadius::all(Val::Px(5.0)),
             ..default()
         },
         ImageNode::new(image.clone()),
-        BorderRadius::all(Val::Px(5.0)),
         Pickable {
             should_block_lower: false,
             ..default()

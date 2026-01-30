@@ -89,11 +89,11 @@ fn init_editor_ui(
             top: px(0.0),
             width:px(300.0),
             height: px(980.0),
+            border_radius: BorderRadius::all(px(5.0)),
             ..default()
         },
         DespawnOnExit(GameStatePlay::Editor),
         ThemeBackgroundColor(tokens::WINDOW_BG),
-        BorderRadius::all(px(5.0)),
         EditorControlsPanel,
         Pickable::default()
     )).id();
