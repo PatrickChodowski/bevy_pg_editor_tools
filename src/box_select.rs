@@ -35,7 +35,7 @@ pub fn box_select_controller() -> impl Bundle {
                 .spawn((Action::<BoxSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyB]))
                 .id();
             let member2 = context
-                .spawn((Action::<BoxSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Right]))
+                .spawn((Action::<BoxSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Left]))
                 .id();
             context.spawn((Action::<BoxSelectUpdate>::new(), Chord::new([member1, member2])));
 
