@@ -143,6 +143,18 @@ fn update_boxselect(
     transform.scale = Vec3::new(dims.x, 1.0, dims.y);
 }
 
+fn end_cancel_boxselect(
+    _trigger:       On<Cancel<BoxSelectUpdate>>,
+    mut commands:   Commands,
+    query:          Single<(Entity, &BoxSelect)>
+){
+    let (bs_entity, box_select) = query.into_inner();
+    let aabb = AABB::from_loc_dims(box_select.loc.xz(), box_select.dims);
+    commands.trigger(BoxSelectFinal{aabb: aabb});
+    commands.entity(bs_entity).despawn();
+}
+
+
 fn end_boxselect(
     _trigger:       On<Complete<BoxSelectUpdate>>,
     mut commands:   Commands,
@@ -153,6 +165,7 @@ fn end_boxselect(
     commands.trigger(BoxSelectFinal{aabb: aabb});
     commands.entity(bs_entity).despawn();
 }
+
 
 pub fn box_select_changed(
     query: Query<Entity, Changed<BoxSelect>>
