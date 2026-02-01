@@ -32,25 +32,32 @@ pub fn box_select_controller() -> impl Bundle {
         ContextPriority::<BoxSelectController>::new(2),
         Actions::<BoxSelectController>::spawn(
             SpawnWith(|context: &mut ActionSpawner<_>| {
-            let member1 = context
-                .spawn((Action::<BoxSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyB]))
-                .id();
-            let member2 = context
-                .spawn((Action::<BoxSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Left]))
-                .id();
-            context.spawn((Action::<BoxSelectUpdate>::new(), Chord::new([member1, member2])));
+
+            context.spawn((
+                Action::<BoxSelectUpdate>::new(),
+                Down::default(),
+                bindings![MouseButton::Middle],
+            ));
+
+            // let member1 = context
+            //     .spawn((Action::<BoxSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyB]))
+            //     .id();
+            // let member2 = context
+            //     .spawn((Action::<BoxSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Left]))
+            //     .id();
+            // context.spawn((Action::<BoxSelectUpdate>::new(), Chord::new([member1, member2])));
 
             })) 
         );
 }
 
-#[derive(InputAction)]
-#[action_output(bool)]
-struct BoxSelectUpdate1;
+// #[derive(InputAction)]
+// #[action_output(bool)]
+// struct BoxSelectUpdate1;
 
-#[derive(InputAction)]
-#[action_output(bool)]
-struct BoxSelectUpdate2;
+// #[derive(InputAction)]
+// #[action_output(bool)]
+// struct BoxSelectUpdate2;
 
 #[derive(InputAction)]
 #[action_output(bool)]
