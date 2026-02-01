@@ -29,6 +29,7 @@ pub struct BoxSelectController;
 pub fn box_select_controller() -> impl Bundle {
     return (
         BoxSelectController,
+        ContextPriority::<BoxSelectController>::new(2),
         Actions::<BoxSelectController>::spawn(
             SpawnWith(|context: &mut ActionSpawner<_>| {
             let member1 = context
