@@ -17,6 +17,7 @@ impl Plugin for PGEditorBoxSelectPlugin {
         .add_input_context::<BoxSelectController>()
         .add_observer(start_boxselect)
         .add_observer(update_boxselect)
+        .add_observer(end_cancel_boxselect)    
         .add_observer(end_boxselect)             
         ;
     }
@@ -143,7 +144,7 @@ fn update_boxselect(
 }
 
 fn end_boxselect(
-    _trigger:       On<Cancel<BoxSelectUpdate>>,
+    _trigger:       On<Complete<BoxSelectUpdate>>,
     mut commands:   Commands,
     query:          Single<(Entity, &BoxSelect)>
 ){
