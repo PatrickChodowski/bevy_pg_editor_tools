@@ -22,7 +22,8 @@ pub struct EditorSettings {
     pub brush_typ: Box<dyn BrushType>,
     pub plane_width: f32,
     pub plane_height: f32,
-    pub plane_subdivisions: u32
+    pub plane_subdivisions: u32,
+    pub plane_loc:  Vec3
 }
 impl EditorSettings {
     pub fn new(
@@ -46,7 +47,8 @@ impl EditorSettings {
             brush_typ: Box::new(NothingBrush),
             plane_height: 50.0,
             plane_width: 50.0,
-            plane_subdivisions: 1
+            plane_subdivisions: 1,
+            plane_loc: Vec3::ZERO
         }
     }
 }

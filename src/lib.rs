@@ -17,6 +17,7 @@ pub mod vertex;
 pub mod ui;
 pub mod settings;
 pub mod terrain_brushes;
+pub mod text_inputs;
 
 use assets_panel::PGEditorAssetsPanelPlugin;
 use brushes::{PGEditorBrushSelectPlugin, BrushSelectController};
@@ -26,6 +27,7 @@ use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorGhostTr
 use planes::PlaneToEdit;
 use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
+use text_inputs::PGEditorTextInputs;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use ui::PGEditorUIPlugin;
 use vertex::PGEditorVertexPlugin;
@@ -51,6 +53,7 @@ impl Plugin for PGEditorPlugin {
                 PGEditorTrackerPlugin,
                 PGEditorBrushSelectPlugin,
                 PGEditorBoxSelectPlugin,
+                PGEditorTextInputs,
                 PGEditorAssetsPanelPlugin,
                 PGEditorThumbnailsPlugin,
                 PGEditorControllerPlugin,

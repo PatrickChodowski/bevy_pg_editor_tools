@@ -5,6 +5,7 @@ use bevy::feathers::controls::{
     button, checkbox, radio, slider, color_slider, color_swatch, ColorSlider, SliderBaseColor
 };
 use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText, UiTheme};
+use bevy::color::palettes::basic::{BLACK, WHITE};
 use bevy::ui::Checked;
 use bevy::ui_widgets::{
     slider_self_update, Activate, RadioButton, RadioGroup, 
@@ -21,6 +22,8 @@ use crate::prelude::{
     GhostTransformMode, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
     EditorMode, UnghostAll, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
 };
+use crate::text_inputs::text_input_field;
+
 
 pub struct PGEditorUIPlugin;
 
@@ -891,6 +894,33 @@ fn new_plane_settings(
                     }
                 )
             ),
+
+            (Text::new("X")),
+            text_input_field(4.0, 50.0, 17.0, 2.0, 5.0, 3.0, 5, true),
+            (Text::new("Y")),
+            text_input_field(4.0, 50.0, 17.0, 2.0, 5.0, 3.0, 5, true),
+            (Text::new("Z")),
+            text_input_field(4.0, 50.0, 17.0, 2.0, 5.0, 3.0, 5, true),
+
+
+            // (Text::new("X")),
+            // (
+            //     slider(
+            //         SliderProps {
+            //             max: 1000000.0,
+            //             value: editor_settings.plane_loc.x,
+            //             min: 0.0,
+            //             ..default()
+            //         },
+            //         (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+            //     ),
+            //     observe(slider_self_update),
+            //     observe(
+            //         |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+            //             editor_settings.plane_loc.x = value_change.value;
+            //         }
+            //     )
+            // ),
             (
                 button(
                     ButtonProps::default(),(PlaneControls, EditorControls),

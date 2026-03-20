@@ -1,24 +1,19 @@
 
 use std::fs;
 use bevy::color::palettes::css::*;
-use bevy_enhanced_input::prelude::ContextActivity;
 use bevy::input::common_conditions::input_just_pressed;
 use bevy::prelude::*;
 use bevy::picking::hover::HoverMap;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
-use bevy::picking::pointer::PointerId;
 use bevy_seedling::sample::OnComplete;
-use bevy_simple_text_input::{
-    TextInput, TextInputPlugin, TextInputSystem, TextInputTextColor,
-    TextInputTextFont, TextInputInactive, TextInputValue
-};
+use bevy_simple_text_input::{TextInputSystem, TextInputInactive, TextInputValue};
 use bevy_seedling::prelude::{SamplePlayer, Volume, PlaybackSettings};
-use bevy_pg_core::prelude::{FlyCamController, GameStatePlay};
+use bevy_pg_core::prelude::GameStatePlay;
 
 use crate::ghost::EditorSpawnAsset;
 use crate::ghost::EditorAsset;
-use crate::controller::EditorController;
 use crate::ghost::EditorGhostTransformMemory;
+use crate::text_inputs::text_input_field;
 
 const IMG_DIM_FOCUS: f32 = 170.0;
 const IMG_DIM: f32 = 150.0;
@@ -31,18 +26,13 @@ pub struct PGEditorAssetsPanelPlugin;
 impl Plugin for PGEditorAssetsPanelPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_plugins(TextInputPlugin)
         .add_systems(OnEnter(GameStatePlay::Editor), init)
         .add_systems(OnExit(GameStatePlay::Editor), clear)
         .add_systems(Update,
             (
-                update_scroll_position,
                 (
-                    (
-                        focus.run_if(input_just_pressed(MouseButton::Left)),
-                        activate_input.run_if(input_just_pressed(KeyCode::Space)),
-                    ),
-                    switch_controllers
+                    update_scroll_position, 
+                    activate_input.run_if(input_just_pressed(KeyCode::Space))
                 ).chain().before(TextInputSystem),
                 update_assets_bar.after(TextInputSystem)
             ).run_if(in_state(GameStatePlay::Editor))
@@ -87,43 +77,6 @@ fn activate_input(
 }
 
 
-fn focus(
-    hover_map: Res<HoverMap>,
-    query:     Single<(Entity, &mut TextInputInactive), With<AssetSearch>>
-){
-    let hit_data = hover_map.0.get(&PointerId::Mouse).unwrap();
-    if hit_data.len() > 0 {
-        let hit_entities: Vec<Entity> = hit_data.keys().cloned().collect::<Vec<Entity>>();
-
-        let mut found_entity: bool = false;
-        let (text_input_entity, mut inactive) = query.into_inner();
-        for entity in hit_entities.iter(){
-            if *entity == text_input_entity {
-                found_entity = true;
-                break; 
-            }
-        }
-        inactive.0 = !found_entity;
-    }
-}
-
-
-fn switch_controllers(
-    mut commands:       Commands,
-    inactive:           Single<&TextInputInactive, Changed<TextInputInactive>>,
-    camera_controller:  Single<Entity, With<FlyCamController>>,
-    editor_controller:  Single<Entity, With<EditorController>>,
-){
-    if inactive.0 {
-        commands.entity(*camera_controller).insert(ContextActivity::<FlyCamController>::ACTIVE);
-        commands.entity(*editor_controller).insert(ContextActivity::<EditorController>::ACTIVE);
-    } else {
-        commands.entity(*camera_controller).insert(ContextActivity::<FlyCamController>::INACTIVE);
-        commands.entity(*editor_controller).insert(ContextActivity::<EditorController>::INACTIVE);
-    }
-}
-
-
 #[derive(Component)]
 pub struct EditorSounds;
 
@@ -138,7 +91,8 @@ fn init(
     ));
 
     let panel = commands.spawn(vertical_right_panel()).id();
-    let text_input = commands.spawn(text_panel()).id();
+    let text_input = commands.spawn(text_input_field(4.0, 200.0, 34.0, 3.0, 10.0, 10.0, 250, false)).id();
+    commands.entity(text_input).insert(AssetSearch);
 
     let mut assets = list_assets();
     let spawner_list: Vec<&str> = vec!["Spawner_NPCs","Spawner_Boats","Spawner_Items"];
@@ -248,30 +202,6 @@ fn vertical_right_panel() -> impl Bundle {
     )
 
 }
-
-fn text_panel() -> impl Bundle {
-    (
-        Node {
-            top: Val::Percent(4.0),
-            width: Val::Px(200.0),
-            border: UiRect::all(Val::Px(5.0)),
-            padding: UiRect::all(Val::Px(10.0)),
-            margin: UiRect::all(Val::Px(10.0)),
-            ..default()
-        },
-        BorderColor::all(Color::from(BLACK)),
-        BackgroundColor(WHITE.into()),
-        TextInput,
-        TextInputTextFont(TextFont {
-            font_size: 34.,
-            ..default()
-        }),
-        AssetSearch,
-        TextInputTextColor(TextColor(BLACK.into())),
-        TextInputInactive(true),
-    )
-}
-
 
 
 fn assets_bar() -> impl Bundle {

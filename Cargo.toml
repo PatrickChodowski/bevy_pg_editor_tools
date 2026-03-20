@@ -8,7 +8,7 @@ description = "Common editor tools"
 resolver = "2"
 
 [dependencies]
-bevy = { version = "0.18.0", default-features = true, features = [
+bevy = { version = "0.18", default-features = true, features = [
     "serialize",
     "mesh_picking",
     "experimental_bevy_feathers"
@@ -29,7 +29,7 @@ noise = "0.9.0"
 bevy_enhanced_input = "0.22.2"
 dyn-clone = "1.0.20"
 bevy_seedling = "0.7.0"
-bevy_simple_text_input = "0.13.0"
+bevy_simple_text_input = "0.14.1"
 rand = "0.9"
 
 [profile.dev]
