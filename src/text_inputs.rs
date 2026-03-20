@@ -1,6 +1,6 @@
 
 use bevy_enhanced_input::prelude::ContextActivity;
-use bevy::input::common_conditions::input_just_pressed;
+use bevy::{color::palettes::tailwind::GRAY_800, input::common_conditions::input_just_pressed};
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 use bevy::picking::hover::HoverMap;
@@ -15,6 +15,121 @@ use bevy_pg_core::prelude::{FlyCamController, GameStatePlay};
 use crate::controller::EditorController;
 
 pub struct PGEditorTextInputs;
+
+#[derive(Component)]
+pub(crate) struct LocInput;
+
+#[derive(Component)]
+pub(crate) struct LocInputX;
+
+#[derive(Component)]
+pub(crate) struct LocInputY;
+
+#[derive(Component)]
+pub(crate) struct LocInputZ;
+
+
+pub(crate) fn loc_input_field(
+    font_size: f32, 
+    border_size: f32, 
+    padding: f32, 
+    margin: f32, 
+) -> impl Bundle {
+
+    let input_node_width: f32 = 60.0;
+
+    (
+        Node {
+            width: Val::Percent(90.0),
+            border: UiRect::all(Val::Px(border_size)),
+            padding: UiRect::all(Val::Px(padding)),
+            margin: UiRect::all(Val::Px(margin)),
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        LocInput,
+        BorderColor::all(Color::from(BLACK)),
+        BackgroundColor(GRAY_800.into()),
+        children![
+            (
+                Node {
+                    width: Val::Px(input_node_width),
+                    border: UiRect::all(Val::Px(2.0)),
+                    padding: UiRect::all(Val::Px(2.0)),
+                    margin: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BorderColor::all(Color::from(BLACK)),
+                BackgroundColor(WHITE.into()),
+                TextInput,
+                LocInputX,
+                TextInputTextFont(TextFont {
+                    font_size: font_size,
+                    ..default()
+                }),
+                TextInputSettings{
+                    retain_on_submit: true,
+                    mask_character: None,
+                    max_length: Some(5)
+                },
+                TextInputTextColor(TextColor(BLACK.into())),
+                TextInputInactive(true),
+            ),
+            (
+                Node {
+                    width: Val::Px(input_node_width),
+                    border: UiRect::all(Val::Px(2.0)),
+                    padding: UiRect::all(Val::Px(2.0)),
+                    margin: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BorderColor::all(Color::from(BLACK)),
+                BackgroundColor(WHITE.into()),
+                TextInput,
+                LocInputY,
+                TextInputTextFont(TextFont {
+                    font_size: font_size,
+                    ..default()
+                }),
+                TextInputSettings{
+                    retain_on_submit: true,
+                    mask_character: None,
+                    max_length: Some(5)
+                },
+                TextInputTextColor(TextColor(BLACK.into())),
+                TextInputInactive(true),
+            ),
+            (
+                Node {
+                    width: Val::Px(input_node_width),
+                    border: UiRect::all(Val::Px(2.0)),
+                    padding: UiRect::all(Val::Px(2.0)),
+                    margin: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BorderColor::all(Color::from(BLACK)),
+                BackgroundColor(WHITE.into()),
+                TextInput,
+                LocInputZ,
+                TextInputTextFont(TextFont {
+                    font_size: font_size,
+                    ..default()
+                }),
+                TextInputSettings{
+                    retain_on_submit: true,
+                    mask_character: None,
+                    max_length: Some(5)
+                },
+                TextInputTextColor(TextColor(BLACK.into())),
+                TextInputInactive(true),
+            )
+        ]
+    )
+}
+
 
 
 

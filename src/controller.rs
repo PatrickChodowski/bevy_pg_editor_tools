@@ -8,10 +8,12 @@ use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
 use bevy_pg_scenes::prelude::{CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
+use bevy_simple_text_input::TextInputValue;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use crate::assets_panel::EditorAssetPanel;
+use crate::text_inputs::{LocInputX, LocInputY, LocInputZ};
 use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
@@ -94,18 +96,36 @@ fn serialize_plane(
     }
 }
 
+fn string_to_f32(s: &str) -> Option<f32> {
+    let trimmed = s.trim();
+    
+    if trimmed.is_empty() {
+        return Some(0.0);
+    }
+
+    trimmed.parse::<f32>().ok()
+}
+
 
 fn spawn_plane(
-    _trigger: On<SpawnPlane>,
-    editor_settings: Res<EditorSettings>, 
-    mut commands: Commands,
+    _trigger:          On<SpawnPlane>,
+    editor_settings:   Res<EditorSettings>, 
+    mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
     mut materials:     ResMut<Assets<StandardMaterial>>,
+    loc_x:             Single<&TextInputValue, With<LocInputX>>,
+    loc_y:             Single<&TextInputValue, With<LocInputY>>,
+    loc_z:             Single<&TextInputValue, With<LocInputZ>>,
 ){
+
+    let Some(x) = string_to_f32(&loc_x.0) else {return;};
+    let Some(y) = string_to_f32(&loc_y.0) else {return;};
+    let Some(z) = string_to_f32(&loc_z.0) else {return;};
+
     let _plane_entity = commands.spawn((
         plane_mesh(editor_settings.plane_width, editor_settings.plane_height, editor_settings.plane_subdivisions, &mut meshes),
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
-        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0))
+        Transform::from_translation(Vec3::new(x, y, z))
     )).id();
 }
 
@@ -157,9 +177,10 @@ fn change_editor_mode(
 
 
 fn turn_off_editor(
-    _trigger: On<Fire<TurnOffEditor>>,
+    _trigger: On<Complete<TurnOffEditor>>,
     mut next_gsp: ResMut<NextState<GameStatePlay>>
 ){
+    info!("Action: Turn Off Editor");
     next_gsp.set(GameStatePlay::Running);
 }
 
@@ -331,7 +352,7 @@ pub fn editor_controller() -> impl Bundle {
                 ),
                 (
                     Action::<TurnOffEditor>::new(),
-                    HoldAndRelease::new(0.3),
+                    Press::default(),
                     bindings![KeyCode::Escape]
                 ),
                 (
@@ -342,7 +363,7 @@ pub fn editor_controller() -> impl Bundle {
                 (
                     Action::<ToggleEditorPanel>::new(),
                     Press::default(),
-                    bindings![KeyCode::Tab]
+                    bindings![KeyCode::ControlLeft]
                 ),
                 (
                     Action::<ToggleAssetsPanel>::new(),

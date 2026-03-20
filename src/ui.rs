@@ -22,7 +22,7 @@ use crate::prelude::{
     GhostTransformMode, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
     EditorMode, UnghostAll, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
 };
-use crate::text_inputs::text_input_field;
+use crate::text_inputs::{text_input_field,loc_input_field};
 
 
 pub struct PGEditorUIPlugin;
@@ -91,7 +91,7 @@ fn init_editor_ui(
             left: px(0.0),
             top: px(0.0),
             width:px(300.0),
-            height: px(980.0),
+            height: percent(95.0),
             border_radius: BorderRadius::all(px(5.0)),
             ..default()
         },
@@ -895,32 +895,8 @@ fn new_plane_settings(
                 )
             ),
 
-            (Text::new("X")),
-            text_input_field(4.0, 50.0, 17.0, 2.0, 5.0, 3.0, 5, true),
-            (Text::new("Y")),
-            text_input_field(4.0, 50.0, 17.0, 2.0, 5.0, 3.0, 5, true),
-            (Text::new("Z")),
-            text_input_field(4.0, 50.0, 17.0, 2.0, 5.0, 3.0, 5, true),
-
-
-            // (Text::new("X")),
-            // (
-            //     slider(
-            //         SliderProps {
-            //             max: 1000000.0,
-            //             value: editor_settings.plane_loc.x,
-            //             min: 0.0,
-            //             ..default()
-            //         },
-            //         (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
-            //     ),
-            //     observe(slider_self_update),
-            //     observe(
-            //         |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-            //             editor_settings.plane_loc.x = value_change.value;
-            //         }
-            //     )
-            // ),
+            (Text::new("Loc")),
+            loc_input_field(15.0, 3.0, 4.0, 10.0),
             (
                 button(
                     ButtonProps::default(),(PlaneControls, EditorControls),
