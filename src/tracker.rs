@@ -4,6 +4,7 @@ use bevy_enhanced_input::prelude::*;
 use bevy::platform::collections::HashMap;
 
 use crate::ghost::{EditorAsset, EditorGhostSettings, editor_asset_bundle};
+use crate::planes::plane_mesh;
 pub struct PGEditorTrackerPlugin;
 
 
@@ -376,5 +377,120 @@ impl CurrentTransformChanges {
     }
     pub fn get(&mut self, entity: Entity) -> &mut ChangeTransform {
         self.data.get_mut(&entity).unwrap()
+    }
+}
+
+
+
+
+#[derive(Clone)]
+pub struct ChangePlaneSpawn {
+    entity: Entity,
+    width: f32,
+    height: f32,
+    subdivisions: u32,
+    loc: Vec3
+}
+impl ChangePlaneSpawn {
+    pub fn new(
+        entity: Entity, 
+        width: f32,
+        height: f32,
+        subdivisions: u32,
+        loc: Vec3
+    ) -> ChangePlaneSpawn {
+        Self {
+            entity, width, height, subdivisions, loc
+        }
+    }
+}
+
+impl Change for ChangePlaneSpawn {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+        world.despawn(self.entity);
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+
+        let mut system_state: SystemState<(
+            ResMut<Assets<Mesh>>,
+            ResMut<Assets<StandardMaterial>>,
+            Commands,
+        )> = SystemState::new(world);
+
+        let (mut meshes, mut materials, mut commands) = system_state.get_mut(world);
+
+        let entity = commands.spawn(
+            (
+                plane_mesh(self.width, self.height, self.subdivisions, &mut meshes),
+                MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
+                Transform::from_translation(self.loc)
+            )
+        ).id();
+        self.entity = entity;    
+        system_state.apply(world);   
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
+    }
+}
+
+
+
+#[derive(Clone)]
+pub struct ChangePlaneHeight {
+    entity: Entity,
+    previous_y: f32,
+    new_y: f32
+}
+impl ChangePlaneHeight {
+    pub fn new(
+        entity: Entity, 
+        previous_y: f32,
+        new_y: f32
+    ) -> ChangePlaneHeight {
+        Self {
+            entity,
+            previous_y,
+            new_y
+        }
+    }
+}
+
+
+impl Change for ChangePlaneHeight {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+        if let Some(mut transform) = world.entity_mut(self.entity).get_mut::<Transform>(){
+            transform.translation.y = self.previous_y;
+        }
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+        if let Some(mut transform) = world.entity_mut(self.entity).get_mut::<Transform>(){
+            transform.translation.y = self.new_y;
+        }
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
     }
 }

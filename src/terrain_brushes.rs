@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::ecs::system::SystemState;
 
 use crate::brushes::BrushType;
+use crate::tracker::{Change, ChangePlaneHeight, Changes};
 use crate::prelude::{PlaneVertex, SelectedVertex, Noise};
 
 #[derive(Clone)]
@@ -34,9 +35,10 @@ impl BrushType for TerrainHeightBrush {
 
         let mut system_state: SystemState<(
             Commands,
+            ResMut<Changes>,
             Query<(Entity, &mut PlaneVertex, &mut Transform, &GlobalTransform, Option<&SelectedVertex>)>
         )> = SystemState::new(world);
-        let (mut commands, mut plane_vertices) = system_state.get_mut(world);
+        let (mut commands, mut changes, mut plane_vertices) = system_state.get_mut(world);
 
         for (vertex_entity, mut plane_vertex, mut vertex_transform, global_transform, maybe_selected) in plane_vertices.iter_mut(){
 
@@ -48,12 +50,18 @@ impl BrushType for TerrainHeightBrush {
 
                 match &self.typ {
                     HeightBrushType::Value(y) => {
+                        let old_y: f32 = vertex_transform.translation.y;
                         vertex_transform.translation.y += y;
+                        let cph = ChangePlaneHeight::new(vertex_entity, old_y, vertex_transform.translation.y);
+                        cph.record(&mut changes);
                     }
                     HeightBrushType::Terraces(terraces) => {
                         for terrace in terraces {
                             if vertex_transform.translation.y >= terrace.min && vertex_transform.translation.y <= terrace.max {
+                                let old_y: f32 = vertex_transform.translation.y;
                                 vertex_transform.translation.y = terrace.value;
+                                let cph = ChangePlaneHeight::new(vertex_entity, old_y, vertex_transform.translation.y);
+                                cph.record(&mut changes);
                                 continue;
                             }
                         }
@@ -65,7 +73,10 @@ impl BrushType for TerrainHeightBrush {
                             combined_noise += noise_value;
                         }
                         let new_y: f32 = combined_noise*noises.1;
+                        let old_y: f32 = vertex_transform.translation.y;
                         vertex_transform.translation.y = new_y;
+                        let cph = ChangePlaneHeight::new(vertex_entity, old_y, new_y);
+                        cph.record(&mut changes);
                     }
                 }
 

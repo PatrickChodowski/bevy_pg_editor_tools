@@ -14,7 +14,7 @@ use std::io::{BufWriter, Write};
 
 use crate::assets_panel::EditorAssetPanel;
 use crate::text_inputs::{LocInputX, LocInputY, LocInputZ};
-use crate::tracker::{Changes, Change, Undo, Redo, ChangesSet, ChangeDespawn, ChangeTransform, CurrentTransformChanges};
+use crate::tracker::{Change, ChangeDespawn, ChangePlaneSpawn, ChangeTransform, Changes, ChangesSet, CurrentTransformChanges, Redo, Undo};
 use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::planes::{PlaneToEdit, plane_mesh};
@@ -74,9 +74,10 @@ fn toggle_navmesh_debug(
 }
 
 fn serialize_plane(
-    _trigger: On<SerializePlane>,
-    query:    Query<(&Mesh3d, Option<&Name>), With<PlaneToEdit>>,
-    meshes:   Res<Assets<Mesh>>,
+    _trigger:           On<SerializePlane>,
+    query:              Query<(&Mesh3d, Option<&Name>), With<PlaneToEdit>>,
+    meshes:             Res<Assets<Mesh>>,
+    editor_settings:    Res<EditorSettings>
 ){
     info!("[EDITOR] serialize planes");
     for (index, (mesh3d, maybe_name)) in query.iter().enumerate(){
@@ -116,17 +117,28 @@ fn spawn_plane(
     loc_x:             Single<&TextInputValue, With<LocInputX>>,
     loc_y:             Single<&TextInputValue, With<LocInputY>>,
     loc_z:             Single<&TextInputValue, With<LocInputZ>>,
+    mut changes:       ResMut<Changes>,
 ){
 
     let Some(x) = string_to_f32(&loc_x.0) else {return;};
     let Some(y) = string_to_f32(&loc_y.0) else {return;};
     let Some(z) = string_to_f32(&loc_z.0) else {return;};
+    let loc = Vec3::new(x, y, z);
 
-    let _plane_entity = commands.spawn((
+    let plane_entity = commands.spawn((
         plane_mesh(editor_settings.plane_width, editor_settings.plane_height, editor_settings.plane_subdivisions, &mut meshes),
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
-        Transform::from_translation(Vec3::new(x, y, z))
+        Transform::from_translation(loc)
     )).id();
+
+    let cps = ChangePlaneSpawn::new(
+        plane_entity, 
+        editor_settings.plane_width, 
+        editor_settings.plane_height, 
+        editor_settings.plane_subdivisions,
+        loc
+    );
+    cps.record(&mut changes);    
 }
 
 fn change_editor_mode(
@@ -363,7 +375,7 @@ pub fn editor_controller() -> impl Bundle {
                 (
                     Action::<ToggleEditorPanel>::new(),
                     Press::default(),
-                    bindings![KeyCode::ControlLeft]
+                    bindings![KeyCode::Space]
                 ),
                 (
                     Action::<ToggleAssetsPanel>::new(),

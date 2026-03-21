@@ -897,6 +897,24 @@ fn new_plane_settings(
 
             (Text::new("Loc")),
             loc_input_field(15.0, 3.0, 4.0, 10.0),
+            (Text::new("Chunks")),
+            (
+                slider(
+                    SliderProps {
+                        max: 10.0,
+                        value: editor_settings.plane_save_chunks as f32,
+                        min: 0.0,
+                        ..default()
+                    },
+                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+                ),
+                observe(slider_self_update),
+                observe(
+                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+                        editor_settings.plane_save_chunks = value_change.value as u32;
+                    }
+                )
+            ),
             (
                 button(
                     ButtonProps::default(),(PlaneControls, EditorControls),

@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::mesh::SerializedMesh;
 
 pub fn plane_mesh(
     width: f32,
@@ -11,6 +12,21 @@ pub fn plane_mesh(
         PlaneToEdit{width, height, subdivisions}
     )
 }
+
+
+pub fn split_into_chunks(
+    plane_mesh: &SerializedMesh, 
+    planetoedit: &PlaneToEdit, 
+    n_chunks: usize
+)-> Option<Vec<SerializedMesh>>{
+
+
+
+
+
+    return None;
+}
+
 
 
 
