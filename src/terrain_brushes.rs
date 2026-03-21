@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::ecs::system::SystemState;
 
 use crate::brushes::BrushType;
-use crate::tracker::{Change, ChangePlaneHeight, Changes};
+use crate::tracker::{Change, ChangePlaneHeight, ChangePlaneColor, Changes};
 use crate::prelude::{PlaneVertex, SelectedVertex, Noise};
 
 #[derive(Clone)]
@@ -53,6 +53,7 @@ impl BrushType for TerrainHeightBrush {
                         let old_y: f32 = vertex_transform.translation.y;
                         vertex_transform.translation.y += y;
                         let cph = ChangePlaneHeight::new(vertex_entity, old_y, vertex_transform.translation.y);
+                        info!("Changing Vertex {} Y from {} to {}", vertex_entity, old_y, vertex_transform.translation.y);
                         cph.record(&mut changes);
                     }
                     HeightBrushType::Terraces(terraces) => {
@@ -122,9 +123,10 @@ impl BrushType for TerrainColorBrush {
     fn apply(&mut self, world: &mut World, loc: Vec3, radius: f32) {
         let mut system_state: SystemState<(
             Commands,
+            ResMut<Changes>,
             Query<(Entity, &mut PlaneVertex, &GlobalTransform, Option<&SelectedVertex>)>
         )> = SystemState::new(world);
-        let (mut commands, mut plane_vertices) = system_state.get_mut(world);
+        let (mut commands, mut changes, mut plane_vertices) = system_state.get_mut(world);
 
         for (vertex_entity, mut plane_vertex, global_transform, maybe_selected) in plane_vertices.iter_mut(){
 
@@ -134,7 +136,11 @@ impl BrushType for TerrainColorBrush {
             if near & maybe_selected.is_none() {
                 commands.entity(vertex_entity).insert(SelectedVertex);
                 match &self.typ {
-                    ColorBrushType::Value{clr} => {plane_vertex.clr = *clr;}
+                    ColorBrushType::Value{clr} => {
+                        let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, *clr);
+                        c.record(&mut changes);
+                        plane_vertex.clr = *clr;
+                    }
                     ColorBrushType::Noise { data, value, clr} => {
 
                         let mut combined_noise: f32 = 0.0;
@@ -143,7 +149,11 @@ impl BrushType for TerrainColorBrush {
                             combined_noise += noise_value;
                         }
                         let alpha: f32 = combined_noise*value;
-                        plane_vertex.clr = [clr[0], clr[1], clr[2], alpha.clamp(0.0, 1.0)];
+                        let new_clr =  [clr[0], clr[1], clr[2], alpha.clamp(0.0, 1.0)];
+                        let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, new_clr);
+                        c.record(&mut changes);
+                        plane_vertex.clr = new_clr;
+
                     }
                     ColorBrushType::Range { min, max, min_clr, max_clr } => {
                         if &global_loc.y >= min && &global_loc.y <= max {
@@ -154,6 +164,9 @@ impl BrushType for TerrainColorBrush {
                                 min_clr[2] + (max_clr[2] - min_clr[2]) * norm_y,
                                 min_clr[3] + (max_clr[3] - min_clr[3]) * norm_y,
                             ];
+                            let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, interpolated_clr);
+                            c.record(&mut changes);
+
                             plane_vertex.clr = interpolated_clr;
                         }
                     }

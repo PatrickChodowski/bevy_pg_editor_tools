@@ -5,6 +5,7 @@ use bevy::platform::collections::HashMap;
 
 use crate::ghost::{EditorAsset, EditorGhostSettings, editor_asset_bundle};
 use crate::planes::plane_mesh;
+use crate::vertex::PlaneVertex;
 pub struct PGEditorTrackerPlugin;
 
 
@@ -476,6 +477,9 @@ impl Change for ChangePlaneHeight {
         if let Some(mut transform) = world.entity_mut(self.entity).get_mut::<Transform>(){
             transform.translation.y = self.previous_y;
         }
+        if let Some(mut plane_vertex) = world.entity_mut(self.entity).get_mut::<PlaneVertex>(){
+            plane_vertex.loc[1] = self.previous_y;
+        }
     }
 
     fn redo(
@@ -484,6 +488,59 @@ impl Change for ChangePlaneHeight {
     ) {
         if let Some(mut transform) = world.entity_mut(self.entity).get_mut::<Transform>(){
             transform.translation.y = self.new_y;
+        }
+        if let Some(mut plane_vertex) = world.entity_mut(self.entity).get_mut::<PlaneVertex>(){
+            plane_vertex.loc[1] = self.new_y;
+        }
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
+    }
+}
+
+
+
+#[derive(Clone)]
+pub struct ChangePlaneColor {
+    entity: Entity,
+    old_color: [f32;4],
+    new_color: [f32;4]
+}
+impl ChangePlaneColor {
+    pub fn new(
+        entity: Entity, 
+        old_color: [f32;4],
+        new_color: [f32;4],
+    ) -> ChangePlaneColor {
+        Self {
+            entity,
+            old_color,
+            new_color
+        }
+    }
+}
+
+
+impl Change for ChangePlaneColor {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+        if let Some(mut plane_vertex) = world.entity_mut(self.entity).get_mut::<PlaneVertex>(){
+            plane_vertex.clr = self.old_color;
+        }
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+        if let Some(mut plane_vertex) = world.entity_mut(self.entity).get_mut::<PlaneVertex>(){
+            plane_vertex.clr = self.new_color;
         }
     }
     
