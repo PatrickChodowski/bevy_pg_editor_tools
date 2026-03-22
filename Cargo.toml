@@ -16,8 +16,8 @@ bevy = { version = "0.18", default-features = true, features = [
 bevy_pg_core = {version="1.18.0", git="https://www.github.com/PatrickChodowski/bevy_pg_core"}
 bevy_pg_nav = {version="1.18.0", git="https://www.github.com/PatrickChodowski/bevy_pg_nav"}
 # bevy_pg_nav = {path="../bevy_pg_nav"}
-bevy_pg_scenes = {version="1.18.0", git="https://www.github.com/PatrickChodowski/bevy_pg_scenes"}
-# bevy_pg_scenes = {path="../bevy_pg_scenes"}
+# bevy_pg_scenes = {version="1.18.0", git="https://www.github.com/PatrickChodowski/bevy_pg_scenes"}
+bevy_pg_scenes = {path="../bevy_pg_scenes"}
 log = { version = "0.4", features = [
     "max_level_debug",
     "release_max_level_warn",

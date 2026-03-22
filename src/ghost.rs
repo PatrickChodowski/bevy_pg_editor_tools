@@ -1,4 +1,5 @@
 use bevy::color::palettes::css::WHITE;
+use bevy::platform::collections::HashMap;
 use bevy::input::common_conditions::input_just_pressed;
 use bevy::picking::hover::HoverMap;
 use bevy::picking::pointer::PointerId;
@@ -16,7 +17,7 @@ pub struct PGEditorGhostPlugin{
     pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub markers_mapping: fn(name: String) -> Marker,
-    pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner
+    pub spawners_mapping: fn(name: String, maybe_data: &Option<HashMap<String, String>>) -> Spawner
 }
 
 #[derive(Resource)]
@@ -24,7 +25,7 @@ pub struct EditorGhostSettings {
     pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub markers_mapping: fn(name: String) -> Marker,
-    pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner
+    pub spawners_mapping: fn(name: String, maybe_data: &Option<HashMap<String, String>>) -> Spawner
 }
 
 
@@ -502,7 +503,7 @@ pub(super) fn editor_asset_bundle(
         }
 
         EditorAsset::Spawner(spawner_name) => {
-            let spawner = (settings.spawners_mapping)(spawner_name.clone(), None);
+            let spawner = (settings.spawners_mapping)(spawner_name.clone(), &None);
             let (spawner_mesh, spawner_mat) = (settings.spawner_mesh)(spawner.id, meshes, materials);
             mesh = spawner_mesh;
             material = spawner_mat;
@@ -723,7 +724,7 @@ fn add_editor_asset(
         EditorAsset::Spawner(spawner_name) => {
             if let Some(_spawner) = maybe_spawner {} else{
                 // Insert generic spawner only if there is no spawner component yet;
-                commands.entity(entity).insert((ghost_settings.spawners_mapping)(spawner_name.clone(), None));
+                commands.entity(entity).insert((ghost_settings.spawners_mapping)(spawner_name.clone(), &None));
             }
         }
         EditorAsset::Marker(marker_name) => {

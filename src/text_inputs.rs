@@ -133,7 +133,7 @@ pub(crate) fn loc_input_field(
 
 
 
-pub(crate) fn text_input_field(
+pub fn text_input_field(
     top: f32, 
     width: f32, 
     font_size: f32, 

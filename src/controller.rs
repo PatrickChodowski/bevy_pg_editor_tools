@@ -266,9 +266,9 @@ fn save_scene(
         if maybe_markee.is_some() {
             continue;
         }
-        let mut option: Option<String> = None;
+        let mut data: Option<HashMap<String,String>> = None;
         if let Some(spawner) = maybe_spawner {
-            option = spawner.option.clone();
+            data = Some(spawner.data.clone());
         }
         // if let Some(marker) = maybe_marker {
         //     match marker.typ {
@@ -280,7 +280,7 @@ fn save_scene(
             location: transform.translation,
             rotation: transform.rotation.to_euler(EulerRot::XYZ).into(),
             scale: transform.scale,
-            option,
+            data,
         };
         sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
     }

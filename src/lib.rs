@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::platform::collections::HashMap;
 use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static};
 use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
@@ -41,7 +42,7 @@ pub struct PGEditorPlugin{
     pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub marker_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
     pub markers_mapping: fn(name: String) -> Marker,
-    pub spawners_mapping: fn(name: String, option: Option<String>) -> Spawner,
+    pub spawners_mapping: fn(name: String, maybe_data: &Option<HashMap<String, String>>) -> Spawner,
     pub brush_mapping: fn(commands: &mut Commands, brush_id: usize, editor_settings: &ResMut<EditorSettings>) -> Box<dyn BrushType>,
     pub brush_id_labels: Vec<(usize, &'static str)>,
     pub vertex_radius: f32
@@ -293,6 +294,7 @@ pub mod prelude {
     };
     pub use crate::noises::{NoiseType, Noise};
     pub use crate::settings::{EditorSettings, EditorMode};
+    pub use crate::text_inputs::text_input_field;
 
     pub use crate::PGEditorPlugin;
 }

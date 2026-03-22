@@ -28,7 +28,7 @@ use bevy::gizmos::{
 };
 use bevy_pg_core::prelude::MainCamera;
 
-use crate::prelude::{Ghost, EditorSettings};
+use crate::prelude::Ghost;
 
 const AXIS_LENGTH: f32 = 1.0;
 const AXIS_TIP_LENGTH: f32 = 0.25;

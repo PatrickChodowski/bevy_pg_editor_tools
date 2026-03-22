@@ -20,7 +20,7 @@ use crate::prelude::{
     ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
     EditorMode, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
 };
-use crate::text_inputs::{text_input_field,loc_input_field};
+use crate::text_inputs::loc_input_field;
 
 
 pub struct PGEditorUIPlugin;
