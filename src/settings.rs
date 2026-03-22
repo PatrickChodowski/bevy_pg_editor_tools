@@ -2,16 +2,12 @@ use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::prelude::*;
 
 use crate::brushes::{NothingBrush, BrushType};
-use crate::ghost::{GhostTransformAxis, GhostTransformMode};
 
 #[derive(Resource, Clone)]
 pub struct EditorSettings {
-    pub ghost_transform_mode: GhostTransformMode,
-    pub ghost_transform_axis: GhostTransformAxis,
-    pub change_value_scale: f32,
     pub color: Color,
     pub snap_nav: bool,
-    pub multi_ghost: bool,
+    // pub multi_ghost: bool,
     pub show_spawners: bool,
     pub show_markers: bool,
     pub mode: EditorMode,
@@ -32,12 +28,9 @@ impl EditorSettings {
         brush_id_labels: Vec<(usize, &'static str)>
     ) -> Self {
         Self {
-            ghost_transform_mode: GhostTransformMode::default(),
-            ghost_transform_axis: GhostTransformAxis::default(),
-            change_value_scale: 1.0,
             color: Color::from(GRAY_500),
             snap_nav: true,
-            multi_ghost: false,
+            // multi_ghost: false,
             show_spawners: false,
             show_markers: false,
             mode: EditorMode::Scene,

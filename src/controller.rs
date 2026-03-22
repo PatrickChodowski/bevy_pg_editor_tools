@@ -15,7 +15,8 @@ use std::io::{BufWriter, Write};
 use crate::assets_panel::EditorAssetPanel;
 use crate::text_inputs::{LocInputX, LocInputY, LocInputZ};
 use crate::tracker::{Change, ChangeDespawn, ChangePlaneSpawn, ChangeTransform, Changes, ChangesSet, CurrentTransformChanges, Redo, Undo};
-use crate::ghost::{EditorAsset, Ghost, GhostTransformAxis, GhostTransformMode};
+use crate::ghost::{EditorAsset, Ghost};
+use crate::transform_gizmo::TransformGizmoMode;
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::planes::{PlaneToEdit, plane_mesh};
 use crate::settings::{EditorMode, EditorSettings};
@@ -29,17 +30,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(set_translation_mode)
         .add_observer(set_rotation_mode)
         .add_observer(set_scale_mode)
-        .add_observer(set_all_axis)
-        .add_observer(set_xz_axis)
-        .add_observer(set_xy_axis)
-        .add_observer(set_y_axis)
-        .add_observer(set_y_axis_origin)
-        .add_observer(set_z_axis)
-        .add_observer(set_x_axis)
-
-        .add_observer(change_value)
-        .add_observer(start_change_value)
-        .add_observer(end_change_value)
         .add_observer(unghost_all)
         .add_observer(on_fire_unghost_all)
         .add_observer(on_fire_save_scene)
@@ -50,10 +40,7 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_navmesh_debug)
         .add_observer(toggle_markers_vis)
         .add_observer(toggle_spawners_vis)
-        .add_observer(toggle_ghost_axis)
-        .add_observer(toggle_ghost_mode)
         .add_observer(toggle_nav_snap)
-        .add_observer(toggle_multi_ghost)
         .add_observer(change_brush)
         .add_observer(turn_off_editor)
         .add_observer(toggle_editor_panel)
@@ -214,30 +201,6 @@ fn toggle_nav_snap(
     editor_settings.snap_nav = trigger.value;
 }
 
-fn toggle_multi_ghost(
-    trigger: On<ToggleMultiGhost>,
-    mut editor_settings: ResMut<EditorSettings>
-){
-    editor_settings.multi_ghost = trigger.value;
-}
-
-
-fn toggle_ghost_axis(
-    trigger: On<ToggleGhostAxis>,
-    mut editor_settings: ResMut<EditorSettings>
-){
-    editor_settings.ghost_transform_axis = trigger.value;
-}
-
-fn toggle_ghost_mode(
-    trigger: On<ToggleGhostMode>,
-    mut editor_settings: ResMut<EditorSettings>
-){
-    editor_settings.ghost_transform_mode = trigger.value;
-}
-
-
-
 fn toggle_markers_vis(
     trigger: On<ToggleMarkersVis>,
     mut markers:  Query<&mut Visibility, With<Marker>>,
@@ -353,16 +316,6 @@ pub fn editor_controller() -> impl Bundle {
         actions!(
             EditorController[
                 (
-                    Action::<ChangeValueScale>::new(),
-                    Press::default(),
-                    Bindings::spawn(
-                        Bidirectional::<Binding, Binding> {
-                            negative: KeyCode::ArrowDown.into(), 
-                            positive: KeyCode::ArrowUp.into()
-                        }
-                    )
-                ),
-                (
                     Action::<TurnOffEditor>::new(),
                     Press::default(),
                     bindings![KeyCode::Escape]
@@ -380,7 +333,7 @@ pub fn editor_controller() -> impl Bundle {
                 (
                     Action::<ToggleAssetsPanel>::new(),
                     Press::default(),
-                    bindings![KeyCode::ShiftLeft]
+                    bindings![KeyCode::Tab]
                 ),
                 (
                     Action::<SaveScene>::new(),
@@ -408,36 +361,6 @@ pub fn editor_controller() -> impl Bundle {
                     bindings![KeyCode::Digit3]
                 ),
                 (
-                    Action::<XY>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Digit4]
-                ),
-                (
-                    Action::<XZ>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Digit5]
-                ),
-                (
-                    Action::<AllAxis>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Digit6]
-                ),
-                (
-                    Action::<SetXAxis>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Digit7]
-                ),
-                (
-                    Action::<SetYAxis>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Digit8]
-                ),
-                (
-                    Action::<SetZAxis>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Digit9]
-                ),
-                (
                     Action::<Undo>::new(),
                     Press::default(),
                     bindings![KeyCode::KeyZ]
@@ -452,16 +375,6 @@ pub fn editor_controller() -> impl Bundle {
                     Press::default(),
                     bindings![KeyCode::BracketLeft]
                 ),
-                (
-                    Action::<ChangeValue>::new(),
-                    Down::default(),
-                    Bindings::spawn(
-                        Bidirectional::<Binding, Binding> {
-                            negative: KeyCode::ArrowLeft.into(), 
-                            positive: KeyCode::ArrowRight.into()
-                        }
-                    )
-                )
             ]
         )
     );
@@ -500,18 +413,6 @@ pub struct ToggleSpawnersVis {
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct ToggleGhostAxis {
-    pub value: GhostTransformAxis
-}
-
-#[derive(InputAction, Event)]
-#[action_output(bool)]
-pub struct ToggleGhostMode {
-    pub value: GhostTransformMode
-}
-
-#[derive(InputAction, Event)]
-#[action_output(bool)]
 pub struct ChangeBrush{
     pub value: usize
 }
@@ -531,180 +432,140 @@ pub struct TurnOnEditor;
 #[action_output(bool)]
 pub struct TurnOffEditor;
 
-#[derive(InputAction)]
-#[action_output(f32)]
-struct ChangeValue;
-
-#[derive(InputAction)]
-#[action_output(f32)]
-pub struct ChangeValueScale;
 
 
-fn start_change_value(
-    _trigger:       On<Start<ChangeValue>>,
-    transforms:     Query<(Entity, &Transform), With<Ghost>>,
-    mut commands:   Commands
-){
-    let mut ctcs = CurrentTransformChanges::new();
-    for (entity, transform) in transforms.iter(){
-        ctcs.data.insert(entity, ChangeTransform::new(entity, *transform));
-    }
-    commands.insert_resource(ctcs);
-}
+// fn change_value(
+//     trigger:        On<Fire<ChangeValue>>,
+//     mut transforms: Query<&mut Transform, With<Ghost>>,
+//     ghs:            Res<EditorSettings>,
+//     navs:           Query<&PGNavmesh>
+// ){
 
-fn end_change_value(
-    _trigger:       On<Complete<ChangeValue>>,
-    transforms:     Query<(Entity, &Transform), With<Ghost>>,
-    mut changes:    ResMut<Changes>,
-    mut commands:   Commands,
-    mut ctcs:       ResMut<CurrentTransformChanges>
-){
-    let mut cts = ChangesSet::new();
-    for (entity, transform) in transforms.iter(){
-        let ct = ctcs.data.get_mut(&entity).unwrap();
-        ct.new = *transform;
-        if ct.old != ct.new {
-            cts.add(*ct);
-        }
-    }
-    if cts.len() > 0 {
-        cts.record(&mut changes);
-    }
-    commands.remove_resource::<CurrentTransformChanges>();
-}
+//     let delta_i32 = trigger.value as i32;
+//     if delta_i32 == 0 {
+//         return;
+//     }
+//     let d = delta_i32 as f32;
 
-fn change_value(
-    trigger:        On<Fire<ChangeValue>>,
-    mut transforms: Query<&mut Transform, With<Ghost>>,
-    ghs:            Res<EditorSettings>,
-    navs:           Query<&PGNavmesh>
-){
+//     let mut origin: Option<Vec2> = None;
 
-    let delta_i32 = trigger.value as i32;
-    if delta_i32 == 0 {
-        return;
-    }
-    let d = delta_i32 as f32;
+//     // Special case for OriginY and Rotation: need origin point of many transforms
+//     if ghs.ghost_transform_axis == GhostTransformAxis::OriginY && ghs.ghost_transform_mode == GhostTransformMode::Rotation {
+//         let count = transforms.iter().len();
+//         match count {
+//             0 => {}
+//             1 => {
+//                 origin = Some(transforms.iter().next().unwrap().translation.xz());
+//             }
+//             _ => {
+//                 // Average:
+//                 // origin = Some(transforms.iter().map(|t| t.translation.xz()).sum::<Vec2>()/count as f32);
 
-    let mut origin: Option<Vec2> = None;
+//                 // Middle:
+//                     let (min_x, max_x, min_z, max_z) = transforms.iter()
+//                     .map(|t| t.translation)
+//                     .fold((f32::MAX, f32::MIN, f32::MAX, f32::MIN), |(min_x, max_x, min_z, max_z), pos| (
+//                         min_x.min(pos.x),
+//                         max_x.max(pos.x),
+//                         min_z.min(pos.z),
+//                         max_z.max(pos.z)));
+//                     origin = Some(Vec2::new((min_x + max_x) * 0.5, (min_z + max_z) *0.5));
+//             }
+//         }
+//     }
 
-    // Special case for OriginY and Rotation: need origin point of many transforms
-    if ghs.ghost_transform_axis == GhostTransformAxis::OriginY && ghs.ghost_transform_mode == GhostTransformMode::Rotation {
-        let count = transforms.iter().len();
-        match count {
-            0 => {}
-            1 => {
-                origin = Some(transforms.iter().next().unwrap().translation.xz());
-            }
-            _ => {
-                // Average:
-                // origin = Some(transforms.iter().map(|t| t.translation.xz()).sum::<Vec2>()/count as f32);
+//     for mut transform in transforms.iter_mut(){
+//         match ghs.ghost_transform_mode {
+//             GhostTransformMode::Translation => {
+//                 let sd = d*ghs.change_value_scale;
+//                 match ghs.ghost_transform_axis {
+//                     GhostTransformAxis::X => {
+//                         transform.translation.x += sd;
+//                         if ghs.snap_nav {
 
-                // Middle:
-                    let (min_x, max_x, min_z, max_z) = transforms.iter()
-                    .map(|t| t.translation)
-                    .fold((f32::MAX, f32::MIN, f32::MAX, f32::MIN), |(min_x, max_x, min_z, max_z), pos| (
-                        min_x.min(pos.x),
-                        max_x.max(pos.x),
-                        min_z.min(pos.z),
-                        max_z.max(pos.z)));
-                    origin = Some(Vec2::new((min_x + max_x) * 0.5, (min_z + max_z) *0.5));
-            }
-        }
-    }
+//                             for navmesh in navs.iter(){
+//                                 if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
+//                                     transform.translation.y = world_pos.y - 1.75;
+//                                     break;
+//                                 }
+//                             }
 
-    for mut transform in transforms.iter_mut(){
-        match ghs.ghost_transform_mode {
-            GhostTransformMode::Translation => {
-                let sd = d*ghs.change_value_scale;
-                match ghs.ghost_transform_axis {
-                    GhostTransformAxis::X => {
-                        transform.translation.x += sd;
-                        if ghs.snap_nav {
+//                         }     
+//                     }
+//                     GhostTransformAxis::Y => {transform.translation.y += sd}
+//                     GhostTransformAxis::Z => {
+//                         transform.translation.z += sd;
+//                         if ghs.snap_nav {
+//                             for navmesh in navs.iter(){
+//                                 if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
+//                                     transform.translation.y = world_pos.y - 1.75;
+//                                     break;
+//                                 }
+//                             }
+//                         }  
+//                     }
+//                     _ => {}
+//                 }
+//             }
+//             GhostTransformMode::Rotation => {
+//                 let sd = d*0.01*ghs.change_value_scale;
+//                 match ghs.ghost_transform_axis {
+//                     GhostTransformAxis::X => {transform.rotate_x(sd)}
+//                     GhostTransformAxis::Y => {transform.rotate_y(sd)}
+//                     GhostTransformAxis::Z => {transform.rotate_z(sd)}
+//                     GhostTransformAxis::OriginY => {
+//                         if let Some(origin) = origin {
+//                             transform.translation = rotate_point_2d(&transform.translation, &origin, sd);
+//                             transform.rotate_y(-sd);
+//                             if ghs.snap_nav {
+//                                 for navmesh in navs.iter(){
+//                                     if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
+//                                         transform.translation.y = world_pos.y - 1.75;
+//                                         break;
+//                                     }
+//                                 }
+//                             }  
+//                         }
+//                     }
+//                     GhostTransformAxis::All => {
+//                         transform.rotate_x(sd);
+//                         transform.rotate_y(sd);
+//                         transform.rotate_z(sd);
+//                     }
+//                     GhostTransformAxis::XZ => {
+//                         transform.rotate_x(sd);
+//                         transform.rotate_z(sd);
+//                     }
+//                     GhostTransformAxis::XY => {
+//                         transform.rotate_x(sd);
+//                         transform.rotate_y(sd);
+//                     }
+//                 }
+//             }
+//             GhostTransformMode::Scale => {
+//                 let sd = d*ghs.change_value_scale;
+//                 match ghs.ghost_transform_axis {
+//                     GhostTransformAxis::X => {transform.scale.x += sd}
+//                     GhostTransformAxis::Y => {transform.scale.y += sd}
+//                     GhostTransformAxis::Z => {transform.scale.z += sd}
+//                     GhostTransformAxis::XY => {
+//                         transform.scale.x += sd;
+//                         transform.scale.z += sd; // Its inversed somehow
+//                     }
+//                     GhostTransformAxis::XZ => {
+//                         transform.scale.x += sd;
+//                         transform.scale.y += sd; // Its inversed somehow
+//                     }
+//                     GhostTransformAxis::All => {
+//                         transform.scale += sd;
+//                     }
+//                     _ => {}
+//                 }
+//             }
 
-                            for navmesh in navs.iter(){
-                                if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
-                                    transform.translation.y = world_pos.y - 1.75;
-                                    break;
-                                }
-                            }
-
-                        }     
-                    }
-                    GhostTransformAxis::Y => {transform.translation.y += sd}
-                    GhostTransformAxis::Z => {
-                        transform.translation.z += sd;
-                        if ghs.snap_nav {
-                            for navmesh in navs.iter(){
-                                if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
-                                    transform.translation.y = world_pos.y - 1.75;
-                                    break;
-                                }
-                            }
-                        }  
-                    }
-                    _ => {}
-                }
-            }
-            GhostTransformMode::Rotation => {
-                let sd = d*0.01*ghs.change_value_scale;
-                match ghs.ghost_transform_axis {
-                    GhostTransformAxis::X => {transform.rotate_x(sd)}
-                    GhostTransformAxis::Y => {transform.rotate_y(sd)}
-                    GhostTransformAxis::Z => {transform.rotate_z(sd)}
-                    GhostTransformAxis::OriginY => {
-                        if let Some(origin) = origin {
-                            transform.translation = rotate_point_2d(&transform.translation, &origin, sd);
-                            transform.rotate_y(-sd);
-                            if ghs.snap_nav {
-                                for navmesh in navs.iter(){
-                                    if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
-                                        transform.translation.y = world_pos.y - 1.75;
-                                        break;
-                                    }
-                                }
-                            }  
-                        }
-                    }
-                    GhostTransformAxis::All => {
-                        transform.rotate_x(sd);
-                        transform.rotate_y(sd);
-                        transform.rotate_z(sd);
-                    }
-                    GhostTransformAxis::XZ => {
-                        transform.rotate_x(sd);
-                        transform.rotate_z(sd);
-                    }
-                    GhostTransformAxis::XY => {
-                        transform.rotate_x(sd);
-                        transform.rotate_y(sd);
-                    }
-                }
-            }
-            GhostTransformMode::Scale => {
-                let sd = d*ghs.change_value_scale;
-                match ghs.ghost_transform_axis {
-                    GhostTransformAxis::X => {transform.scale.x += sd}
-                    GhostTransformAxis::Y => {transform.scale.y += sd}
-                    GhostTransformAxis::Z => {transform.scale.z += sd}
-                    GhostTransformAxis::XY => {
-                        transform.scale.x += sd;
-                        transform.scale.z += sd; // Its inversed somehow
-                    }
-                    GhostTransformAxis::XZ => {
-                        transform.scale.x += sd;
-                        transform.scale.y += sd; // Its inversed somehow
-                    }
-                    GhostTransformAxis::All => {
-                        transform.scale += sd;
-                    }
-                    _ => {}
-                }
-            }
-
-        }
-    }
-}
+//         }
+//     }
+// }
 
 #[derive(Event)]
 pub struct ToggleNavmeshDebug {
@@ -725,31 +586,7 @@ struct SetScaleMode;
 
 #[derive(InputAction)]
 #[action_output(bool)]
-struct SetXAxis;
-
-#[derive(InputAction)]
-#[action_output(bool)]
-struct SetZAxis;
-
-#[derive(InputAction)]
-#[action_output(bool)]
-struct SetYAxis;
-
-#[derive(InputAction)]
-#[action_output(bool)]
 pub struct SetYAxisOrigin;
-
-#[derive(InputAction)]
-#[action_output(bool)]
-pub struct AllAxis;
-
-#[derive(InputAction)]
-#[action_output(bool)]
-pub struct XZ;
-
-#[derive(InputAction)]
-#[action_output(bool)]
-pub struct XY;
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
@@ -773,15 +610,10 @@ pub struct ToggleEditorPanel;
 #[action_output(bool)]
 pub struct ToggleAssetsPanel;
 
-#[derive(InputAction, Event)]
-#[action_output(bool)]
-pub struct ToggleMultiGhost {
-    pub value: bool
-}
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct UnghostAll;
+ pub struct UnghostAll;
 
 
 fn toggle_editor_panel(
@@ -817,72 +649,24 @@ fn toggle_assets_panel(
 
 fn set_translation_mode(
     _trigger:    On<Fire<SetTranslationMode>>,
-    mut ghost_settings: ResMut<EditorSettings>
+    mut transform_gizmo_mode: ResMut<TransformGizmoMode>
 ){
-    ghost_settings.ghost_transform_mode = GhostTransformMode::Translation;
+    *transform_gizmo_mode = TransformGizmoMode::Translate;
+
 }
 
 fn set_rotation_mode(
     _trigger:    On<Fire<SetRotationMode>>,
-    mut ghost_settings: ResMut<EditorSettings>
+    mut transform_gizmo_mode: ResMut<TransformGizmoMode>
 ){
-    ghost_settings.ghost_transform_mode = GhostTransformMode::Rotation;
+    *transform_gizmo_mode = TransformGizmoMode::Rotate;
 }
 
 fn set_scale_mode(
     _trigger:    On<Fire<SetScaleMode>>,
-    mut ghost_settings: ResMut<EditorSettings>
+    mut transform_gizmo_mode: ResMut<TransformGizmoMode>
 ){
-    ghost_settings.ghost_transform_mode = GhostTransformMode::Scale;
-}
-
-fn set_x_axis(
-    _trigger:    On<Fire<SetXAxis>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::X;
-}
-
-fn set_y_axis(
-    _trigger:    On<Fire<SetYAxis>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::Y;
-}
-
-fn set_all_axis(
-    _trigger:    On<Fire<AllAxis>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::All;
-}
-
-fn set_xz_axis(
-    _trigger:    On<Fire<XZ>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::XZ;
-}
-
-fn set_xy_axis(
-    _trigger:    On<Fire<XY>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::XY;
-}
-
-fn set_y_axis_origin(
-    _trigger:    On<Fire<SetYAxisOrigin>>,
-    mut ghost_settings: ResMut<EditorSettings> 
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::OriginY;
-}
-
-fn set_z_axis(
-    _trigger:    On<Fire<SetZAxis>>,
-    mut ghost_settings: ResMut<EditorSettings>
-){
-    ghost_settings.ghost_transform_axis = GhostTransformAxis::Z;
+    *transform_gizmo_mode = TransformGizmoMode::Scale;
 }
 
 fn delete_object(

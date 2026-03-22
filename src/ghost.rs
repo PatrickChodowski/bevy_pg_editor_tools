@@ -2,19 +2,15 @@ use bevy::color::palettes::css::WHITE;
 use bevy::input::common_conditions::input_just_pressed;
 use bevy::picking::hover::HoverMap;
 use bevy::picking::pointer::PointerId;
-use bevy::window::PrimaryWindow;
 use bevy::prelude::*;
 use bevy::prelude::Press;
 use std::f32::consts::FRAC_PI_2;
-use bevy_pg_nav::prelude::PGNavmesh;
-use bevy_pg_core::prelude::{MainCamera, GameState, GameStatePlay, AABB, PointerData};
+use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB, PointerData};
 use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static};
 
-
-use crate::assets_panel::EditorAssetPanel;
 use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
-use crate::settings::EditorSettings;
-use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn, CurrentTransformChanges};
+use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
+use crate::transform_gizmo::{TransformGizmoFocus, TransformGizmoHoverState};
 
 pub struct PGEditorGhostPlugin{
     pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
@@ -53,9 +49,6 @@ impl Plugin for PGEditorGhostPlugin {
         .add_observer(toggle_ghost)
         .add_observer(add_ghost)
         .add_observer(remove_ghost)
-        .add_observer(ghost_transform_drag_start)
-        .add_observer(ghost_transform_drag)
-        .add_observer(ghost_transform_drag_end)
         .add_observer(ghost_bs_selected)
         .add_observer(add_editor_asset)
 
@@ -84,7 +77,6 @@ const GHOST_COLOR: Srgba = Srgba { red: 0.565, green: 0.933, blue: 0.565, alpha:
 
 fn bs_select(
     mut commands: Commands,
-    ghs:          Res<EditorSettings>,
     query:        Query<&BoxSelect>,
     assets:       Query<(Entity, &Transform), With<EditorAsset>>,
     mut gizmos:   Gizmos,
@@ -92,9 +84,6 @@ fn bs_select(
 ){
     for entity in ghost_marks.iter(){
         commands.entity(entity).remove::<GhostMark>();
-    }
-    if ghs.multi_ghost == false {
-        return;
     }
 
     let Ok(box_select) = query.single() else {return};
@@ -115,7 +104,6 @@ fn bs_select(
 fn ghost_bs_selected(
     trigger:      On<BoxSelectFinal>,
     mut commands: Commands,
-    ghs:          Option<Res<EditorSettings>>,
     assets:       Query<(Entity, &MeshMaterial3d<StandardMaterial>, &Transform), With<EditorAsset>>,
     ghost_marks:  Query<Entity, With<GhostMark>>,
     game_state:   Option<Res<State<GameStatePlay>>>
@@ -131,9 +119,6 @@ fn ghost_bs_selected(
     for entity in ghost_marks.iter(){
         commands.entity(entity).remove::<GhostMark>();
     }
-    if ghs.as_ref().unwrap().multi_ghost == false {
-        return;
-    }
     for (entity, mat, transform) in assets.iter(){
         if trigger.has_point(transform.translation.xz()){
             commands.entity(entity).insert(Ghost{material_after: mat.0.clone()});
@@ -141,25 +126,6 @@ fn ghost_bs_selected(
     }
 }
 
-#[derive(Default, Debug, PartialEq, Clone, Copy)]
-pub enum GhostTransformMode {
-    Translation,
-    #[default]
-    Rotation,
-    Scale
-}
-
-#[derive(Default, Debug, PartialEq, Clone, Copy)]
-pub enum GhostTransformAxis {
-    X, 
-    #[default]
-    Y, 
-    Z,
-    OriginY,
-    All,
-    XZ,
-    XY,
-}
 
 fn copy_ghost(
     mut commands: Commands,
@@ -173,7 +139,7 @@ fn copy_ghost(
         match key {
             KeyCode::ControlLeft => {
 
-                info!("ControlLeft Multighost copy spawn");
+                info!("ControlLeft copy spawn");
                 let offset_x: f32 = 10.0;
                 let offset_z: f32 = 10.0;
                 // TODO: maybe.. improve spawn position logic instead of just offset
@@ -217,20 +183,103 @@ fn copy_ghost(
 }
 
 fn toggle_ghost(
-    trigger:      On<Pointer<Press>>,
-    mut commands: Commands,
-    query:        Query<(Entity, &MeshMaterial3d<StandardMaterial>, Option<&Ghost>), With<EditorAsset>>,
-){
-    if trigger.pointer_id == PointerId::Mouse {
-        if trigger.button == PointerButton::Secondary {
+    trigger:            On<Pointer<Press>>,
+    mut commands:       Commands,
+    query:              Query<(Entity, &MeshMaterial3d<StandardMaterial>, Option<&Ghost>, Option<&TransformGizmoFocus>), With<EditorAsset>>,
+    focus:              Query<Entity, With<TransformGizmoFocus>>,
+    ghosts:             Query<Entity, With<Ghost>>,
+    gizmo_hover_state:  Res<TransformGizmoHoverState>,
+    state:              Res<State<GameStatePlay>>,
+    keys:               Res<ButtonInput<KeyCode>>,
 
-            if let Ok((entity, material, ghost)) = query.get(trigger.entity){
-                if let Some(_ghost) = ghost {
-                    commands.entity(entity).remove::<Ghost>();
-                } else {
-                    commands.entity(entity).insert(Ghost{material_after: material.0.clone()});
+){
+
+    if *state != GameStatePlay::Editor {
+        return;
+    }
+
+    let mut multi_ghost: bool = false;
+    let mut remove_ghost: bool = false;
+    let mut unghost_all: bool = false;
+    for key in keys.get_pressed() {
+        match key {
+            KeyCode::ShiftLeft => {
+                multi_ghost = true;
+            }
+            KeyCode::KeyR => {
+                remove_ghost = true;
+            }
+            KeyCode::KeyU => {
+                unghost_all = true;
+            }
+            _ => {}
+        }
+    }
+
+
+    if trigger.pointer_id == PointerId::Mouse {
+        if trigger.button == PointerButton::Primary {
+
+            if unghost_all {
+                for focus_entity in focus.iter(){
+                    commands.entity(focus_entity).remove::<TransformGizmoFocus>();
+                }
+                for ghost_entity in ghosts.iter(){
+                    commands.entity(ghost_entity).remove::<Ghost>();
+                } 
+            }
+
+            if let Some(_hovered_axis) = gizmo_hover_state.hovered_axis {
+                if remove_ghost {
+                    commands.entity(trigger.entity).try_remove::<Ghost>();
+                    commands.entity(trigger.entity).try_remove::<TransformGizmoFocus>();
+                }
+            } else {
+
+                if let Ok((entity, material, maybe_ghost, maybe_gizmo)) = query.get(trigger.entity){
+
+                    match (maybe_ghost, remove_ghost, multi_ghost) {
+
+                        (None, false, false) => {
+                            for focus_entity in focus.iter(){
+                                commands.entity(focus_entity).remove::<TransformGizmoFocus>();
+                            }
+                            for ghost_entity in ghosts.iter(){
+                                commands.entity(ghost_entity).remove::<Ghost>();
+                            }
+                            commands.entity(entity).insert(Ghost{material_after: material.0.clone()});
+                            commands.entity(entity).insert(TransformGizmoFocus);
+                        }
+
+                        (None, false, true) => {
+                            for focus_entity in focus.iter(){
+                                commands.entity(focus_entity).remove::<TransformGizmoFocus>();
+                            }
+                            commands.entity(entity).insert(Ghost{material_after: material.0.clone()});
+                            commands.entity(entity).insert(TransformGizmoFocus);
+                        }
+
+                        (None, true, _) => {
+                            // do nothing on remove if they dont have anything
+                        }
+                        (Some(_), false, _) => {
+                            if maybe_gizmo.is_none(){
+                                for focus_entity in focus.iter(){
+                                    commands.entity(focus_entity).remove::<TransformGizmoFocus>();
+                                }
+                                commands.entity(entity).insert(TransformGizmoFocus);
+                            }
+                        }
+                        (Some(_), true, _) => {
+                            commands.entity(entity).remove::<TransformGizmoFocus>();
+                            commands.entity(entity).remove::<Ghost>();
+                        }
+
+                    }
+
                 }
             }
+
         }
     }
 }
@@ -241,6 +290,7 @@ pub(super) fn unghost_all(
 ){
     for entity in query.iter(){
         commands.entity(entity).remove::<Ghost>();
+        commands.entity(entity).try_remove::<TransformGizmoFocus>();
     }
 
     commands.remove_resource::<GhostMaterialRef>();
@@ -249,27 +299,11 @@ pub(super) fn unghost_all(
 fn add_ghost(
     trigger:        On<Add, Ghost>,
     mut commands:   Commands,
-    ghost_mat:      Res<GhostMaterialRef>,
-    ghosts:         Query<Entity, With<Ghost>>,
-    ghs:            Res<EditorSettings>
+    ghost_mat:      Res<GhostMaterialRef>
 ){
     commands.entity(trigger.entity).insert(
         MeshMaterial3d(ghost_mat.handle.clone())
-    );
-    
-    if ghs.multi_ghost == false {
-        for entity in ghosts.iter(){
-            if entity != trigger.entity{
-                commands.entity(entity).remove::<Ghost>(); 
-            }
-        }
-    }
-
-    // commands.entity(trigger.entity)
-    // .observe(ghost_transform_out)
-    // .observe(ghost_transform_hover)
-    ;
-    
+    );    
 }
 
 fn remove_ghost(
@@ -501,176 +535,176 @@ pub(super) fn editor_asset_bundle(
     return bundle;
 }
 
-fn ghost_transform_drag_start(
-    mut trigger:    On<Pointer<DragStart>>,
-    window_entity:  Single<Entity, With<PrimaryWindow>>,
-    transforms:     Query<(Entity, &Transform), With<Ghost>>,
-    mut commands:   Commands,
-    game_state:     Option<Res<State<GameStatePlay>>>,
-    hovermap:       Res<HoverMap>,
-    assbuttons:     Query<&EditorAssetPanel>
-){
-    if let Some(game_state) = game_state {
-        if *game_state != GameStatePlay::Editor {
-            return;
-        }
-    } else {
-        return;
-    }
+// fn ghost_transform_drag_start(
+//     mut trigger:    On<Pointer<DragStart>>,
+//     window_entity:  Single<Entity, With<PrimaryWindow>>,
+//     transforms:     Query<(Entity, &Transform), With<Ghost>>,
+//     mut commands:   Commands,
+//     game_state:     Option<Res<State<GameStatePlay>>>,
+//     hovermap:       Res<HoverMap>,
+//     assbuttons:     Query<&EditorAssetPanel>
+// ){
+//     if let Some(game_state) = game_state {
+//         if *game_state != GameStatePlay::Editor {
+//             return;
+//         }
+//     } else {
+//         return;
+//     }
 
-    if trigger.entity != *window_entity {
-        return;
-    }
-    trigger.propagate(false);
+//     if trigger.entity != *window_entity {
+//         return;
+//     }
+//     trigger.propagate(false);
 
-    // Prevent start dragging if clicking on asset button in the same time
-    let hit_data = hovermap.0.get(&PointerId::Mouse).unwrap();
-    if hit_data.len() > 0 {
-        let hit_entities: Vec<Entity> = hit_data.keys().cloned().collect::<Vec<Entity>>();
-        for entity in hit_entities.iter(){
-            if assbuttons.contains(*entity){
-                return;
-            }
-        }
-    }
+//     // Prevent start dragging if clicking on asset button in the same time
+//     let hit_data = hovermap.0.get(&PointerId::Mouse).unwrap();
+//     if hit_data.len() > 0 {
+//         let hit_entities: Vec<Entity> = hit_data.keys().cloned().collect::<Vec<Entity>>();
+//         for entity in hit_entities.iter(){
+//             if assbuttons.contains(*entity){
+//                 return;
+//             }
+//         }
+//     }
 
-    if transforms.iter().len() == 0 {
-        return;
-    }
+//     if transforms.iter().len() == 0 {
+//         return;
+//     }
 
-    if trigger.pointer_id == PointerId::Mouse {
-        if trigger.button == PointerButton::Primary {
-            let mut ctcs = CurrentTransformChanges::new();
-            for (entity, transform) in transforms.iter(){
-                ctcs.add(entity, transform);
-            }
-            commands.insert_resource(ctcs);
-        }
-    }
-}
+//     if trigger.pointer_id == PointerId::Mouse {
+//         if trigger.button == PointerButton::Primary {
+//             let mut ctcs = CurrentTransformChanges::new();
+//             for (entity, transform) in transforms.iter(){
+//                 ctcs.add(entity, transform);
+//             }
+//             commands.insert_resource(ctcs);
+//         }
+//     }
+// }
 
-fn ghost_transform_drag_end(
-    mut trigger:    On<Pointer<DragEnd>>,
-    window_entity:  Single<Entity, With<PrimaryWindow>>,
-    transforms:     Query<(Entity, &Transform), With<Ghost>>,
-    mut commands:   Commands,
-    changes:        Option<ResMut<Changes>>,
-    ctcs:           Option<ResMut<CurrentTransformChanges>>,
-    game_state:     Option<Res<State<GameStatePlay>>>
-){
+// fn ghost_transform_drag_end(
+//     mut trigger:    On<Pointer<DragEnd>>,
+//     window_entity:  Single<Entity, With<PrimaryWindow>>,
+//     transforms:     Query<(Entity, &Transform), With<Ghost>>,
+//     mut commands:   Commands,
+//     changes:        Option<ResMut<Changes>>,
+//     ctcs:           Option<ResMut<CurrentTransformChanges>>,
+//     game_state:     Option<Res<State<GameStatePlay>>>
+// ){
 
-    if let Some(game_state) = game_state {
-        if *game_state != GameStatePlay::Editor {
-            return;
-        }
-    } else {
-        return;
-    }
+//     if let Some(game_state) = game_state {
+//         if *game_state != GameStatePlay::Editor {
+//             return;
+//         }
+//     } else {
+//         return;
+//     }
 
-    if trigger.entity != *window_entity {
-        return;
-    }
-    trigger.propagate(false);
+//     if trigger.entity != *window_entity {
+//         return;
+//     }
+//     trigger.propagate(false);
 
-    let Some(mut ctcs) = ctcs else {return};
-    let Some(mut changes) = changes else {return};
+//     let Some(mut ctcs) = ctcs else {return};
+//     let Some(mut changes) = changes else {return};
 
 
-    if trigger.pointer_id == PointerId::Mouse {
-        if trigger.button == PointerButton::Primary {
-            let mut cts = ChangesSet::new();
-            for (entity, transform) in transforms.iter(){
-                let change_transform = ctcs.get(entity);
-                change_transform.new = *transform;
-                if change_transform.old != change_transform.new {
-                    cts.add(change_transform.clone());
-                }
-            }
-            if cts.len() > 0 {
-                cts.record(&mut changes);
-            }
-            commands.remove_resource::<CurrentTransformChanges>();
-        }
-    }
-}
+//     if trigger.pointer_id == PointerId::Mouse {
+//         if trigger.button == PointerButton::Primary {
+//             let mut cts = ChangesSet::new();
+//             for (entity, transform) in transforms.iter(){
+//                 let change_transform = ctcs.get(entity);
+//                 change_transform.new = *transform;
+//                 if change_transform.old != change_transform.new {
+//                     cts.add(change_transform.clone());
+//                 }
+//             }
+//             if cts.len() > 0 {
+//                 cts.record(&mut changes);
+//             }
+//             commands.remove_resource::<CurrentTransformChanges>();
+//         }
+//     }
+// }
 
-fn ghost_transform_drag(
-    mut trigger:    On<Pointer<Drag>>,
-    window_entity:  Single<Entity, With<PrimaryWindow>>,
-    mut transforms: Query<&mut Transform, With<Ghost>>,
-    pointer:        Res<PointerData>,
-    camera:         Single<(&Camera, &GlobalTransform), With<MainCamera>>,
-    navs:           Query<&PGNavmesh>,
-    ghs:            Option<Res<EditorSettings>>,
-    game_state:     Option<Res<State<GameStatePlay>>>,
-    ctcs:           Option<Res<CurrentTransformChanges>>,
-){
+// fn ghost_transform_drag(
+//     mut trigger:    On<Pointer<Drag>>,
+//     window_entity:  Single<Entity, With<PrimaryWindow>>,
+//     mut transforms: Query<&mut Transform, With<Ghost>>,
+//     pointer:        Res<PointerData>,
+//     camera:         Single<(&Camera, &GlobalTransform), With<MainCamera>>,
+//     navs:           Query<&PGNavmesh>,
+//     ghs:            Option<Res<EditorSettings>>,
+//     game_state:     Option<Res<State<GameStatePlay>>>,
+//     ctcs:           Option<Res<CurrentTransformChanges>>,
+// ){
 
-    if let Some(game_state) = game_state {
-        if *game_state != GameStatePlay::Editor {
-            return;
-        }
-    } else {
-        return;
-    }
+//     if let Some(game_state) = game_state {
+//         if *game_state != GameStatePlay::Editor {
+//             return;
+//         }
+//     } else {
+//         return;
+//     }
     
-    if navs.is_empty(){
-        return;
-    }
+//     if navs.is_empty(){
+//         return;
+//     }
 
-    if trigger.entity != *window_entity {
-        return;
-    }
+//     if trigger.entity != *window_entity {
+//         return;
+//     }
 
-    if ctcs.is_none(){
-        return;
-    }
+//     if ctcs.is_none(){
+//         return;
+//     }
 
-    trigger.propagate(false);
+//     trigger.propagate(false);
 
-    if trigger.pointer_id == PointerId::Mouse {
-        if trigger.button == PointerButton::Primary {
+//     if trigger.pointer_id == PointerId::Mouse {
+//         if trigger.button == PointerButton::Primary {
 
-            let (camera, camera_transform) = camera.into_inner();
-            let Some(world_pos) = pointer.world_pos else {return};
-            let Some(cursor_pos) = pointer.cursor_pos else {return};
+//             let (camera, camera_transform) = camera.into_inner();
+//             let Some(world_pos) = pointer.world_pos else {return};
+//             let Some(cursor_pos) = pointer.cursor_pos else {return};
 
-            // let factor: f32 = 0.32;
-            let factor: f32 = 1.0;
-            let delta_x = trigger.delta.x*factor;
-            let delta_y = trigger.delta.y*factor;
+//             // let factor: f32 = 0.32;
+//             let factor: f32 = 1.0;
+//             let delta_x = trigger.delta.x*factor;
+//             let delta_y = trigger.delta.y*factor;
 
-            let Ok(previous_cursor_ray) = camera.viewport_to_world(camera_transform, cursor_pos+Vec2::new(delta_x, delta_y)) else {return};
-            let mut maybe_previous_world_pos: Option<Vec3> = None;
+//             let Ok(previous_cursor_ray) = camera.viewport_to_world(camera_transform, cursor_pos+Vec2::new(delta_x, delta_y)) else {return};
+//             let mut maybe_previous_world_pos: Option<Vec3> = None;
 
-            for navmesh in navs.iter(){
-                if let Some((_poly, previous_world_pos)) = navmesh.ray_intersection(
-                    &previous_cursor_ray.origin,
-                    &previous_cursor_ray.direction
-                ) {
-                    maybe_previous_world_pos = Some(previous_world_pos);
-                    break;
-                }
-            }
+//             for navmesh in navs.iter(){
+//                 if let Some((_poly, previous_world_pos)) = navmesh.ray_intersection(
+//                     &previous_cursor_ray.origin,
+//                     &previous_cursor_ray.direction
+//                 ) {
+//                     maybe_previous_world_pos = Some(previous_world_pos);
+//                     break;
+//                 }
+//             }
 
-            let Some(previous_world_pos) = maybe_previous_world_pos else {return};
-            let world_delta = world_pos.xz() - previous_world_pos.xz();
+//             let Some(previous_world_pos) = maybe_previous_world_pos else {return};
+//             let world_delta = world_pos.xz() - previous_world_pos.xz();
 
-            for mut transform in transforms.iter_mut(){
-                transform.translation.x -= world_delta.x;
-                transform.translation.z -= world_delta.y;
-                if ghs.as_ref().unwrap().snap_nav {
-                    for navmesh in navs.iter(){
-                        if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
-                            transform.translation.y = world_pos.y - 1.75;
-                            break;
-                        }
-                    }
-                }   
-            }
-        }
-    }
-}
+//             for mut transform in transforms.iter_mut(){
+//                 transform.translation.x -= world_delta.x;
+//                 transform.translation.z -= world_delta.y;
+//                 if ghs.as_ref().unwrap().snap_nav {
+//                     for navmesh in navs.iter(){
+//                         if let Some((_poly, world_pos)) = navmesh.has_point(&transform.translation.xz()){
+//                             transform.translation.y = world_pos.y - 1.75;
+//                             break;
+//                         }
+//                     }
+//                 }   
+//             }
+//         }
+//     }
+// }
 
 
 fn add_editor_asset(
@@ -700,38 +734,3 @@ fn add_editor_asset(
         }
     }
 }
-
-
-// fn ghost_transform_hover(
-//     trigger:         On<Pointer<Move>>,
-//     mut query:       Query<(&mut Text, &TextSection)>,
-//     objs:            Query<(&Transform, &Name)> 
-// ){
-//     for (mut txt, section) in query.iter_mut(){
-//         match section {
-//             TextSection::Hover => {
-//             let Ok((transform, name)) = objs.get(trigger.entity) else {return};
-//             txt.0 = format!("{}: ({:.0}, {:.0}, {:.0})", 
-//                                 name, 
-//                                 transform.translation.x, 
-//                                 transform.translation.y, 
-//                                 transform.translation.z);
-//             }
-//             _ => {}
-//         }
-//     }
-// }
-
-// fn ghost_transform_out(
-//     _trigger:         On<Pointer<Out>>,
-//     mut query:       Query<(&mut Text, &TextSection)>,
-// ){
-//     for (mut txt, section) in query.iter_mut(){
-//         match section {
-//             TextSection::Hover => {
-//                 txt.0 = format!("");
-//             }
-//             _ => {}
-//         }
-//     }
-// }

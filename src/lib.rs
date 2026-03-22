@@ -1,4 +1,4 @@
-use bevy::{input::common_conditions::input_just_pressed, prelude::*};
+use bevy::prelude::*;
 use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static};
 use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
@@ -18,6 +18,7 @@ pub mod ui;
 pub mod settings;
 pub mod terrain_brushes;
 pub mod text_inputs;
+pub mod transform_gizmo;
 
 use assets_panel::PGEditorAssetsPanelPlugin;
 use brushes::{PGEditorBrushSelectPlugin, BrushSelectController};
@@ -29,6 +30,7 @@ use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use text_inputs::PGEditorTextInputs;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
+use transform_gizmo::TransformGizmoPlugin;
 use ui::PGEditorUIPlugin;
 use vertex::PGEditorVertexPlugin;
 
@@ -57,6 +59,7 @@ impl Plugin for PGEditorPlugin {
                 PGEditorAssetsPanelPlugin,
                 PGEditorThumbnailsPlugin,
                 PGEditorControllerPlugin,
+                TransformGizmoPlugin,
                 PGEditorVertexPlugin{
                     vertex_radius: self.vertex_radius
                 },
@@ -269,12 +272,11 @@ pub mod prelude {
     pub use crate::controller::{
         PGEditorControllerPlugin, editor_controller, EditorController, 
         TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
-        ToggleGhostAxis, ToggleGhostMode, ToggleSnapNav, ToggleMultiGhost, 
+        ToggleSnapNav, 
         ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, SpawnPlane, ToggleNavmeshDebug
     };
     pub use crate::ghost::{
-        PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, 
-        EditorAsset, GhostTransformAxis, GhostTransformMode
+        PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, 
     };
     pub use crate::thumbnails::PGEditorThumbnailsPlugin;
     pub use crate::tracker::{

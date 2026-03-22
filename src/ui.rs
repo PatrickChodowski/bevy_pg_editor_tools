@@ -5,7 +5,6 @@ use bevy::feathers::controls::{
     button, checkbox, radio, slider, color_slider, color_swatch, ColorSlider, SliderBaseColor
 };
 use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText, UiTheme};
-use bevy::color::palettes::basic::{BLACK, WHITE};
 use bevy::ui::Checked;
 use bevy::ui_widgets::{
     slider_self_update, Activate, RadioButton, RadioGroup, 
@@ -17,10 +16,9 @@ use bevy_pg_nav::prelude::NavConfig;
 
 use crate::controller::SerializePlane;
 use crate::prelude::{
-    ToggleMarkersVis, ToggleMultiGhost, ToggleSnapNav, EditorSettings, 
-    ToggleSpawnersVis, ToggleGhostAxis, ToggleGhostMode, GhostTransformAxis, 
-    GhostTransformMode, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
-    EditorMode, UnghostAll, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
+    ToggleMarkersVis, ToggleSnapNav, EditorSettings, 
+    ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
+    EditorMode, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
 };
 use crate::text_inputs::{text_input_field,loc_input_field};
 
@@ -49,14 +47,14 @@ pub struct BrushControls;
 #[derive(Component)]
 pub struct PlaneControls;
 
-#[derive(Component)]
-struct RadioButtonAxis {
-    value: GhostTransformAxis
-}
-#[derive(Component)]
-struct RadioButtonMode {
-    value: GhostTransformMode
-}
+// #[derive(Component)]
+// struct RadioButtonAxis {
+//     value: GhostTransformAxis
+// }
+// #[derive(Component)]
+// struct RadioButtonMode {
+//     value: GhostTransformMode
+// }
 
 #[derive(Component)]
 struct RadioButtonBrush {
@@ -108,10 +106,6 @@ fn init_editor_ui(
         label_section(&mut commands, "Scene Settings"),
         ghost_checkboxes1(&mut commands, &editor_settings),
         ghost_checkboxes2(&mut commands, &editor_settings),
-        value_scale_slider(&mut commands, &editor_settings),
-        ghost_transform_radio(&mut commands, &editor_settings),
-        ghost_transform_mode(&mut commands, &editor_settings),
-        ghost_buttons(&mut commands),
         empty_row(&mut commands, 15.0),
         label_section(&mut commands, "Brush Settings"),
         brush_radio(&mut commands, &editor_settings),
@@ -349,41 +343,41 @@ fn terrain_color(
     )).id();
 }
 
-fn value_scale_slider(
-    commands: &mut Commands,
-    editor_settings: &Res<EditorSettings>
-) -> Entity {
-    return commands.spawn((
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Start,
-            column_gap: px(8),
-            ..default()
-        },
-        SceneControls,
-        children![
-            (
-                slider(
-                    SliderProps {
-                        max: 1.0,
-                        value: editor_settings.change_value_scale,
-                        min: 0.0,
-                        ..default()
-                    },
-                    (SliderStep(0.01), SliderPrecision(2), SceneControls, EditorControls),
-                ),
-                observe(slider_self_update),
-                observe(
-                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.change_value_scale = value_change.value ;
-                    }
-                )
-            ),
-        ]
-    )).id();
-}
+// fn value_scale_slider(
+//     commands: &mut Commands,
+//     editor_settings: &Res<EditorSettings>
+// ) -> Entity {
+//     return commands.spawn((
+//         Node {
+//             display: Display::Flex,
+//             flex_direction: FlexDirection::Row,
+//             align_items: AlignItems::Center,
+//             justify_content: JustifyContent::Start,
+//             column_gap: px(8),
+//             ..default()
+//         },
+//         SceneControls,
+//         children![
+//             (
+//                 slider(
+//                     SliderProps {
+//                         max: 1.0,
+//                         value: editor_settings.change_value_scale,
+//                         min: 0.0,
+//                         ..default()
+//                     },
+//                     (SliderStep(0.01), SliderPrecision(2), SceneControls, EditorControls),
+//                 ),
+//                 observe(slider_self_update),
+//                 observe(
+//                     |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+//                         editor_settings.change_value_scale = value_change.value ;
+//                     }
+//                 )
+//             ),
+//         ]
+//     )).id();
+// }
 
 
 fn brush_radio(
@@ -440,127 +434,127 @@ fn brush_radio(
 }
 
 
-fn ghost_transform_radio(commands: &mut Commands, editor_settings: &Res<EditorSettings>) -> Entity {
+// fn ghost_transform_radio(commands: &mut Commands, editor_settings: &Res<EditorSettings>) -> Entity {
 
-    let data: Vec<(GhostTransformAxis, &str)> = vec![
-        (GhostTransformAxis::X, "X"),
-        (GhostTransformAxis::Y, "Y"),
-        (GhostTransformAxis::Z, "Z"),
-        (GhostTransformAxis::OriginY, "OriginY"),
-        (GhostTransformAxis::All, "All"),
-        (GhostTransformAxis::XZ, "XZ"),
-        (GhostTransformAxis::XY, "XY"),
-    ];
+//     let data: Vec<(GhostTransformAxis, &str)> = vec![
+//         (GhostTransformAxis::X, "X"),
+//         (GhostTransformAxis::Y, "Y"),
+//         (GhostTransformAxis::Z, "Z"),
+//         (GhostTransformAxis::OriginY, "OriginY"),
+//         (GhostTransformAxis::All, "All"),
+//         (GhostTransformAxis::XZ, "XZ"),
+//         (GhostTransformAxis::XY, "XY"),
+//     ];
 
-    let mut radios: Vec<Entity> = Vec::with_capacity(7);
-    for (value, label) in data.iter(){
-        if editor_settings.ghost_transform_axis == *value {
-            radios.push(commands.spawn(radio((Checked, RadioButtonAxis{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
-        } else {
-            radios.push(commands.spawn(radio((RadioButtonAxis{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
-        }
-    };
+//     let mut radios: Vec<Entity> = Vec::with_capacity(7);
+//     for (value, label) in data.iter(){
+//         if editor_settings.ghost_transform_axis == *value {
+//             radios.push(commands.spawn(radio((Checked, RadioButtonAxis{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
+//         } else {
+//             radios.push(commands.spawn(radio((RadioButtonAxis{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
+//         }
+//     };
 
-    let radio_group = commands.spawn((
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Row,
-            row_gap: px(4),
-            ..default()
-        },
-        SceneControls,
-        RadioGroup,
-        observe(
-            |value_change: On<ValueChange<Entity>>,
-            q_radio: Query<(Entity, &RadioButtonAxis), With<RadioButton>>,
-            mut commands: Commands| {
-                for (entity, radio) in q_radio.iter() {
-                    if entity == value_change.value {
-                        commands.trigger(ToggleGhostAxis{value: radio.value});
-                        commands.entity(entity).insert(Checked);
-                    } else {
-                        commands.entity(entity).remove::<Checked>();
-                    }
-                }
-            }
-    ))).id();
+//     let radio_group = commands.spawn((
+//         Node {
+//             display: Display::Flex,
+//             flex_direction: FlexDirection::Row,
+//             row_gap: px(4),
+//             ..default()
+//         },
+//         SceneControls,
+//         RadioGroup,
+//         observe(
+//             |value_change: On<ValueChange<Entity>>,
+//             q_radio: Query<(Entity, &RadioButtonAxis), With<RadioButton>>,
+//             mut commands: Commands| {
+//                 for (entity, radio) in q_radio.iter() {
+//                     if entity == value_change.value {
+//                         commands.trigger(ToggleGhostAxis{value: radio.value});
+//                         commands.entity(entity).insert(Checked);
+//                     } else {
+//                         commands.entity(entity).remove::<Checked>();
+//                     }
+//                 }
+//             }
+//     ))).id();
 
-    commands.entity(radio_group).add_children(&radios);
+//     commands.entity(radio_group).add_children(&radios);
 
-    let local_root = commands.spawn(
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Start,
-            column_gap: px(8),
-            ..default()
-        }
-    ).id();
+//     let local_root = commands.spawn(
+//         Node {
+//             display: Display::Flex,
+//             flex_direction: FlexDirection::Row,
+//             align_items: AlignItems::Center,
+//             justify_content: JustifyContent::Start,
+//             column_gap: px(8),
+//             ..default()
+//         }
+//     ).id();
 
-    commands.entity(local_root).add_child(radio_group);
-    return local_root;
-}
+//     commands.entity(local_root).add_child(radio_group);
+//     return local_root;
+// }
 
-fn ghost_transform_mode(
-    commands: &mut Commands, 
-    editor_settings: &Res<EditorSettings>
-) -> Entity {
-    let data: Vec<(GhostTransformMode, &str)> = vec![
-        (GhostTransformMode::Translation, "Translation"),
-        (GhostTransformMode::Rotation, "Rotation"),
-        (GhostTransformMode::Scale, "Scale"),
-    ];
+// fn ghost_transform_mode(
+//     commands: &mut Commands, 
+//     editor_settings: &Res<EditorSettings>
+// ) -> Entity {
+//     let data: Vec<(GhostTransformMode, &str)> = vec![
+//         (GhostTransformMode::Translation, "Translation"),
+//         (GhostTransformMode::Rotation, "Rotation"),
+//         (GhostTransformMode::Scale, "Scale"),
+//     ];
 
-    let mut radios: Vec<Entity> = Vec::with_capacity(3);
-    for (value, label) in data.iter(){
-        if editor_settings.ghost_transform_mode == *value {
-            radios.push(commands.spawn(radio((Checked, RadioButtonMode{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
-        } else {
-            radios.push(commands.spawn(radio((RadioButtonMode{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
-        }
-    };
+//     let mut radios: Vec<Entity> = Vec::with_capacity(3);
+//     for (value, label) in data.iter(){
+//         if editor_settings.ghost_transform_mode == *value {
+//             radios.push(commands.spawn(radio((Checked, RadioButtonMode{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
+//         } else {
+//             radios.push(commands.spawn(radio((RadioButtonMode{value: *value}, SceneControls, EditorControls), Spawn((Text::new(*label), ThemedText)))).id());
+//         }
+//     };
 
-    let radio_group = commands.spawn((
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Row,
-            row_gap: px(4),
-            ..default()
-        },
-        SceneControls,
-        RadioGroup,
-        observe(
-            |value_change: On<ValueChange<Entity>>,
-            q_radio: Query<(Entity, &RadioButtonMode), With<RadioButton>>,
-            mut commands: Commands| {
-                for (entity, radio) in q_radio.iter() {
-                    if entity == value_change.value {
-                        commands.trigger(ToggleGhostMode{value: radio.value});
-                        commands.entity(entity).insert(Checked);
-                    } else {
-                        commands.entity(entity).remove::<Checked>();
-                    }
-                }
-            }
-    ))).id();
+//     let radio_group = commands.spawn((
+//         Node {
+//             display: Display::Flex,
+//             flex_direction: FlexDirection::Row,
+//             row_gap: px(4),
+//             ..default()
+//         },
+//         SceneControls,
+//         RadioGroup,
+//         observe(
+//             |value_change: On<ValueChange<Entity>>,
+//             q_radio: Query<(Entity, &RadioButtonMode), With<RadioButton>>,
+//             mut commands: Commands| {
+//                 for (entity, radio) in q_radio.iter() {
+//                     if entity == value_change.value {
+//                         commands.trigger(ToggleGhostMode{value: radio.value});
+//                         commands.entity(entity).insert(Checked);
+//                     } else {
+//                         commands.entity(entity).remove::<Checked>();
+//                     }
+//                 }
+//             }
+//     ))).id();
 
-    commands.entity(radio_group).add_children(&radios);
+//     commands.entity(radio_group).add_children(&radios);
 
-    let local_root = commands.spawn(
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Start,
-            column_gap: px(8),
-            ..default()
-        }).id();
+//     let local_root = commands.spawn(
+//         Node {
+//             display: Display::Flex,
+//             flex_direction: FlexDirection::Row,
+//             align_items: AlignItems::Center,
+//             justify_content: JustifyContent::Start,
+//             column_gap: px(8),
+//             ..default()
+//         }).id();
     
-    commands.entity(local_root).add_child(radio_group);
-    return local_root;
+//     commands.entity(local_root).add_child(radio_group);
+//     return local_root;
 
-}
+// }
 
 fn ghost_checkboxes1(
     commands: &mut Commands, 
@@ -665,26 +659,30 @@ fn ghost_checkboxes2(
         )   
     );
 
-    let entity4 = if editor_settings.multi_ghost {
-        commands.spawn(checkbox((Checked, SceneControls, EditorControls), Spawn((Text::new("MultiGhost"), ThemedText)))).id()
-    } else {
-        commands.spawn(checkbox((SceneControls, EditorControls), Spawn((Text::new("MultiGhost"), ThemedText)))).id()
-    };
-    commands.entity(entity4).insert(
-        observe(
-            |change: On<ValueChange<bool>>, mut commands: Commands| {
-                commands.trigger(ToggleMultiGhost{value: change.value});
-                let mut checkbox = commands.entity(change.source);
-                if change.value {
-                    checkbox.insert(Checked);
-                } else {
-                    checkbox.remove::<Checked>();
-                }
-            }
-        )   
-    );
+    // let entity4 = if editor_settings.multi_ghost {
+    //     commands.spawn(checkbox((Checked, SceneControls, EditorControls), Spawn((Text::new("MultiGhost"), ThemedText)))).id()
+    // } else {
+    //     commands.spawn(checkbox((SceneControls, EditorControls), Spawn((Text::new("MultiGhost"), ThemedText)))).id()
+    // };
+    // commands.entity(entity4).insert(
+    //     observe(
+    //         |change: On<ValueChange<bool>>, mut commands: Commands| {
+    //             commands.trigger(ToggleMultiGhost{value: change.value});
+    //             let mut checkbox = commands.entity(change.source);
+    //             if change.value {
+    //                 checkbox.insert(Checked);
+    //             } else {
+    //                 checkbox.remove::<Checked>();
+    //             }
+    //         }
+    //     )   
+    // );
 
-    commands.entity(local_root).add_children(&vec![entity3, entity4]);
+    commands.entity(local_root).add_children(
+        &vec![
+        entity3, 
+        // entity4
+        ]);
     return local_root;
 
 }
@@ -728,36 +726,6 @@ fn buttons(commands: &mut Commands) -> Entity {
         ]
     )).id()
 }
-
-fn ghost_buttons(
-    commands: &mut Commands
-) -> Entity {
-    commands.spawn((
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Start,
-            column_gap: px(8),
-            max_width: px(250.0),
-            ..default()
-        },
-        SceneControls,
-        children![
-            (
-                button(
-                    ButtonProps::default(),
-                    (SceneControls, EditorControls),
-                    Spawn((Text::new("Unghost All"), ThemedText))
-                ),
-                observe(|_activate: On<Activate>, mut commands: Commands| {
-                    commands.trigger(UnghostAll);
-                })       
-            )
-        ]
-    )).id()
-}
-
 
 fn other_buttons(
     commands: &mut Commands
