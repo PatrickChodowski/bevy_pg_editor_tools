@@ -6,8 +6,7 @@ use bevy::prelude::*;
 use bevy::picking::hover::HoverMap;
 use bevy::picking::pointer::PointerId;
 use bevy_simple_text_input::{
-    TextInputPlugin, TextInputSystem,
-    TextInputInactive, TextInput, TextInputTextFont, TextInputTextColor, TextInputSettings
+    TextInput, TextInputInactive, TextInputPlugin, TextInputSettings, TextInputSystem, TextInputTextColor, TextInputTextFont, TextInputValue
 };
 
 use bevy_pg_core::prelude::{FlyCamController, GameStatePlay};
@@ -134,6 +133,7 @@ pub(crate) fn loc_input_field(
 
 
 pub fn text_input_field(
+    value: String,
     top: f32, 
     width: f32, 
     font_size: f32, 
@@ -155,6 +155,7 @@ pub fn text_input_field(
         BorderColor::all(Color::from(BLACK)),
         BackgroundColor(WHITE.into()),
         TextInput,
+        TextInputValue(value),
         TextInputTextFont(TextFont {
             font_size: font_size,
             ..default()

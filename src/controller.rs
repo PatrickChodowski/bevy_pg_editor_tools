@@ -285,8 +285,8 @@ fn save_scene(
         sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
     }
     let filename = format!(
-        "./assets/maps/{}/{}_{}.scene.json",
-        current_chunk.map_name, current_chunk.map_name, current_chunk.chunk_id
+        "./assets/maps/{}_{}.scene.json",
+        current_chunk.map_name, current_chunk.chunk_id
     );
 
     info!("[EDITOR] Saving to file {}", filename);

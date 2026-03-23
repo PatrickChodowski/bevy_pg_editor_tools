@@ -1,12 +1,11 @@
 
 use std::fs;
 use bevy::color::palettes::css::*;
-use bevy::input::common_conditions::input_just_pressed;
 use bevy::prelude::*;
 use bevy::picking::hover::HoverMap;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy_seedling::sample::OnComplete;
-use bevy_simple_text_input::{TextInputSystem, TextInputInactive, TextInputValue};
+use bevy_simple_text_input::{TextInputSystem, TextInputValue};
 use bevy_seedling::prelude::{SamplePlayer, Volume, PlaybackSettings};
 use bevy_pg_core::prelude::GameStatePlay;
 
@@ -91,7 +90,7 @@ fn init(
     ));
 
     let panel = commands.spawn(vertical_right_panel()).id();
-    let text_input = commands.spawn(text_input_field(4.0, 200.0, 34.0, 3.0, 10.0, 10.0, 250, false)).id();
+    let text_input = commands.spawn(text_input_field("".to_string(), 4.0, 200.0, 34.0, 3.0, 10.0, 10.0, 250, false)).id();
     commands.entity(text_input).insert(AssetSearch);
 
     let mut assets = list_assets();
