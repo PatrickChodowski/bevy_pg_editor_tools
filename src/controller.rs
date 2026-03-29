@@ -16,7 +16,7 @@ use crate::assets_panel::EditorAssetPanel;
 use crate::text_inputs::{LocInputX, LocInputY, LocInputZ};
 use crate::tracker::{Change, ChangeDespawn, ChangePlaneSpawn, ChangeTransform, Changes, ChangesSet, CurrentTransformChanges, Redo, Undo};
 use crate::ghost::{EditorAsset, Ghost};
-use crate::transform_gizmo::TransformGizmoMode;
+use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::planes::{PlaneToEdit, plane_mesh};
 use crate::settings::{EditorMode, EditorSettings};
@@ -649,24 +649,24 @@ fn toggle_assets_panel(
 
 fn set_translation_mode(
     _trigger:    On<Fire<SetTranslationMode>>,
-    mut transform_gizmo_mode: ResMut<TransformGizmoMode>
+    mut transform_gizmo_settings: ResMut<TransformGizmoConfig>
 ){
-    *transform_gizmo_mode = TransformGizmoMode::Translate;
+    transform_gizmo_settings.mode = TransformGizmoMode::Translate;
 
 }
 
 fn set_rotation_mode(
     _trigger:    On<Fire<SetRotationMode>>,
-    mut transform_gizmo_mode: ResMut<TransformGizmoMode>
+    mut transform_gizmo_settings: ResMut<TransformGizmoConfig>
 ){
-    *transform_gizmo_mode = TransformGizmoMode::Rotate;
+    transform_gizmo_settings.mode = TransformGizmoMode::Rotate;
 }
 
 fn set_scale_mode(
     _trigger:    On<Fire<SetScaleMode>>,
-    mut transform_gizmo_mode: ResMut<TransformGizmoMode>
+    mut transform_gizmo_settings: ResMut<TransformGizmoConfig>
 ){
-    *transform_gizmo_mode = TransformGizmoMode::Scale;
+    transform_gizmo_settings.mode = TransformGizmoMode::Scale;
 }
 
 fn delete_object(

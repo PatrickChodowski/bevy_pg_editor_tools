@@ -19,6 +19,7 @@ pub mod ui;
 pub mod settings;
 pub mod terrain_brushes;
 pub mod text_inputs;
+pub mod transform_gizmo_render;
 pub mod transform_gizmo;
 
 use assets_panel::PGEditorAssetsPanelPlugin;
@@ -32,6 +33,7 @@ use thumbnails::PGEditorThumbnailsPlugin;
 use text_inputs::PGEditorTextInputs;
 use tracker::{PGEditorTrackerPlugin, CurrentTransformChanges, Changes};
 use transform_gizmo::TransformGizmoPlugin;
+use transform_gizmo_render::TransformGizmoRenderPlugin;
 use ui::PGEditorUIPlugin;
 use vertex::PGEditorVertexPlugin;
 
@@ -61,6 +63,7 @@ impl Plugin for PGEditorPlugin {
                 PGEditorThumbnailsPlugin,
                 PGEditorControllerPlugin,
                 TransformGizmoPlugin,
+                TransformGizmoRenderPlugin,
                 PGEditorVertexPlugin{
                     vertex_radius: self.vertex_radius
                 },

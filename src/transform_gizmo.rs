@@ -1,11 +1,11 @@
 // All credits go to https://github.com/jbuehler23/bevy/tree/transform-gizmo
 // Slightly modified to deal with multiple entities in the same time
 
-use bevy::app::{App, Plugin, Startup, Update};
+use bevy::app::{App, Plugin, Update};
+use bevy::prelude::{in_state, Local};
 use bevy::camera::Camera;
-use bevy::color::{Alpha, Color};
+use bevy::color::{Color};
 use bevy::ecs::{
-    change_detection::DetectChanges,
     component::Component,
     entity::Entity,
     query::With,
@@ -15,50 +15,46 @@ use bevy::ecs::{
     system::{Query, Res, ResMut, Single},
 };
 use bevy::input::{mouse::MouseButton, ButtonInput};
-use bevy::math::{Isometry3d, Quat, Vec2, Vec3};
+use bevy::math::{Quat, Vec2, Vec3, Ray3d};
 use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 use bevy::transform::components::{GlobalTransform, Transform};
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow, Window};
 use bevy::platform::collections::HashMap;
 
-use bevy::gizmos::{
-    config::{GizmoConfigGroup, GizmoConfigStore},
-    gizmos::Gizmos,
-    AppGizmoBuilder,
-};
-use bevy_pg_core::prelude::MainCamera;
+use bevy_pg_core::prelude::{MainCamera, GameStatePlay};
 
 use crate::prelude::Ghost;
+use crate::tracker::{Changes, Change, ChangeTransform, ChangesSet};
 
-const AXIS_LENGTH: f32 = 1.0;
-const AXIS_TIP_LENGTH: f32 = 0.25;
-const AXIS_START_OFFSET: f32 = 0.2;
-const ROTATE_RING_RADIUS: f32 = 1.0;
-const SCALE_CUBE_SIZE: f32 = 0.07;
+pub const AXIS_LENGTH: f32 = 1.0;
+pub const AXIS_TIP_LENGTH: f32 = 0.2;
+pub const AXIS_START_OFFSET: f32 = 0.2;
+pub const ROTATE_RING_RADIUS: f32 = 1.0;
+pub const SCALE_CUBE_SIZE: f32 = 0.07;
 
-const COLOR_X: Color = Color::srgb(1.0, 0.2, 0.2);
-const COLOR_Y: Color = Color::srgb(0.2, 1.0, 0.2);
-const COLOR_Z: Color = Color::srgb(0.2, 0.4, 1.0);
-const COLOR_X_BRIGHT: Color = Color::srgb(1.0, 0.5, 0.5);
-const COLOR_Y_BRIGHT: Color = Color::srgb(0.5, 1.0, 0.5);
-const COLOR_Z_BRIGHT: Color = Color::srgb(0.5, 0.7, 1.0);
+pub const COLOR_X: Color = Color::srgb(1.0, 0.0, 0.49);
+pub const COLOR_Y: Color = Color::srgb(0.0, 1.0, 0.49);
+pub const COLOR_Z: Color = Color::srgb(0.0, 0.49, 1.0);
+pub const COLOR_VIEW: Color = Color::WHITE;
+pub const INACTIVE_ALPHA: f32 = 0.5;
 
-const TRANSLATE_SENSITIVITY: f32 = 0.003;
-const ROTATE_SENSITIVITY: f32 = 0.01;
-const SCALE_SENSITIVITY: f32 = 0.005;
 const MIN_SCALE: f32 = 0.01;
-const AXIS_HIT_DISTANCE: f32 = 35.0;
-const INACTIVE_ALPHA: f32 = 0.15;
-
-#[derive(Default, Reflect, GizmoConfigGroup)]
-struct TransformGizmoGroup;
+pub const AXIS_HIT_DISTANCE: f32 = 35.0;
+pub const SHAFT_RADIUS: f32 = 0.015;
+pub const SHAFT_LENGTH: f32 = 0.6;
+pub const CONE_RADIUS: f32 = 0.05;
+pub const CONE_HEIGHT: f32 = 0.2;
+pub const VIEW_CIRCLE_MINOR: f32 = 0.01;
+pub const VIEW_CIRCLE_MAJOR: f32 = 0.15;
+pub const VIEW_RING_MINOR: f32 = 0.01;
+pub const VIEW_RING_MAJOR: f32 = 1.15;
 
 #[derive(Component, Debug, Default, Clone, Copy, Reflect)]
+#[component(storage = "SparseSet")]
 #[reflect(Component, Default)]
 pub struct TransformGizmoFocus;
 
-#[derive(Resource, Default, PartialEq, Eq, Clone, Copy, Debug, Reflect)]
-#[reflect(Resource, Default)]
+#[derive(Default, PartialEq, Eq, Clone, Copy, Debug, Reflect)]
 pub enum TransformGizmoMode {
     #[default]
     Translate,
@@ -66,8 +62,7 @@ pub enum TransformGizmoMode {
     Scale,
 }
 
-#[derive(Resource, Default, PartialEq, Eq, Clone, Copy, Debug, Reflect)]
-#[reflect(Resource, Default)]
+#[derive(Default, PartialEq, Eq, Clone, Copy, Debug, Reflect)]
 pub enum TransformGizmoSpace {
     #[default]
     World,
@@ -79,43 +74,43 @@ pub enum TransformGizmoAxis {
     X,
     Y,
     Z,
+    /// The view-plane / view-axis (white).
+    View
 }
 
 /// Exposes the current drag state so external systems (undo, UI) can observe it.
 #[derive(Resource, Default, Reflect)]
 #[reflect(Resource, Default)]
-pub struct TransformGizmoDragState {
+pub struct TransformGizmoState {
     /// `true` while the user is actively dragging.
     pub active: bool,
+    /// The axis under the cursor, if any.
+    pub hovered_axis: Option<TransformGizmoAxis>,
     /// The axis being dragged, if any.
     pub axis: Option<TransformGizmoAxis>,
     /// Screen position where the drag started.
     pub drag_start_screen: Vec2,
     /// The transform snapshot taken when the drag started.
     pub data: HashMap<Entity, Transform>,
+    /// World-space point (or normalized direction for rotation) where the drag started.
+    pub drag_start_world: Vec3,
+    /// World-space gizmo origin at drag start.
+    pub gizmo_origin: Vec3,
 }
 
-/// Exposes which axis the cursor is currently hovering over.
-#[derive(Resource, Default, Reflect)]
-#[reflect(Resource, Default)]
-pub struct TransformGizmoHoverState {
-    pub hovered_axis: Option<TransformGizmoAxis>,
-}
 
-/// Optional configuration to customize [`TransformGizmo`](TransformGizmoPlugin) parameters.
+/// Configuration and preferences for the transform gizmo.
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct TransformGizmoConfig {
+    /// Which manipulation mode the gizmo is in.
+    pub mode: TransformGizmoMode,
+    /// Whether the gizmo transforms the object using world or local space axes.
+    pub space: TransformGizmoSpace,
     /// Length of the axis handles.
     pub axis_length: f32,
     /// Radius of the rotation rings.
     pub rotate_ring_radius: f32,
-    /// Translation sensitivity (world-units per pixel per unit-distance).
-    pub translate_sensitivity: f32,
-    /// Rotation sensitivity (radians per pixel).
-    pub rotate_sensitivity: f32,
-    /// Scale sensitivity (scale-units per pixel).
-    pub scale_sensitivity: f32,
     /// Screen-space pixel distance for hover detection.
     pub axis_hit_distance: f32,
     /// If set, translation snaps to this increment.
@@ -128,27 +123,36 @@ pub struct TransformGizmoConfig {
     pub confine_cursor: bool,
     /// Screen-space scale factor. Set to 0.0 to disable constant-size behavior.
     pub screen_scale_factor: f32,
-    /// Line width for gizmo rendering.
-    pub line_width: f32,
 }
 
 impl Default for TransformGizmoConfig {
     fn default() -> Self {
         Self {
+            mode: TransformGizmoMode::default(),
+            space: TransformGizmoSpace::default(),
             axis_length: AXIS_LENGTH,
             rotate_ring_radius: ROTATE_RING_RADIUS,
-            translate_sensitivity: TRANSLATE_SENSITIVITY,
-            rotate_sensitivity: ROTATE_SENSITIVITY,
-            scale_sensitivity: SCALE_SENSITIVITY,
             axis_hit_distance: AXIS_HIT_DISTANCE,
             snap_translate: None,
             snap_rotate: None,
             snap_scale: None,
             confine_cursor: true,
             screen_scale_factor: 0.1,
-            line_width: 3.0,
         }
     }
+}
+
+/// Marker component for the root entity of the gizmo mesh hierarchy.
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct TransformGizmoRoot;
+
+/// Marker component for individual gizmo mesh parts.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct TransformGizmoMeshMarker {
+    /// Which axis this mesh part represents.
+    pub axis: TransformGizmoAxis,
+    /// Which mode this mesh part is used in.
+    pub mode: TransformGizmoMode,
 }
 
 
@@ -156,64 +160,36 @@ pub struct TransformGizmoPlugin;
 
 impl Plugin for TransformGizmoPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<TransformGizmoMode>()
-            .init_resource::<TransformGizmoSpace>()
-            .init_resource::<TransformGizmoDragState>()
-            .init_resource::<TransformGizmoHoverState>()
-            .init_resource::<TransformGizmoConfig>()
-            .init_gizmo_group::<TransformGizmoGroup>()
-            .register_type::<TransformGizmoFocus>()
-            .register_type::<TransformGizmoMode>()
-            .register_type::<TransformGizmoSpace>()
-            .register_type::<TransformGizmoDragState>()
-            .register_type::<TransformGizmoHoverState>()
-            .register_type::<TransformGizmoConfig>()
-            .add_systems(Startup, configure_transform_gizmo_group)
-            .add_systems(
-                Update,
-                (
-                    sync_transform_gizmo_config,
-                    transform_gizmo_hover,
-                    transform_gizmo_drag,
-                    transform_gizmo_draw,
-                )
-                    .chain(),
-            );
+        app
+        .init_resource::<TransformGizmoState>()
+        .init_resource::<TransformGizmoConfig>()
+        .register_type::<TransformGizmoFocus>()
+        .register_type::<TransformGizmoMode>()
+        .register_type::<TransformGizmoSpace>()
+        .register_type::<TransformGizmoState>()
+        .register_type::<TransformGizmoConfig>()
+        .add_systems(
+            Update,
+            (
+                transform_gizmo_hover,
+                transform_gizmo_drag
+            )
+            .chain().run_if(in_state(GameStatePlay::Editor)),
+        );
     }
 }
 
-fn configure_transform_gizmo_group(
-    mut config_store: ResMut<GizmoConfigStore>,
-    config: Res<TransformGizmoConfig>,
-) {
-    let (gizmo_config, _) = config_store.config_mut::<TransformGizmoGroup>();
-    gizmo_config.depth_bias = -1.0;
-    gizmo_config.line.width = config.line_width;
-}
-
-fn sync_transform_gizmo_config(
-    mut config_store: ResMut<GizmoConfigStore>,
-    config: Res<TransformGizmoConfig>,
-) {
-    if config.is_changed() {
-        let (gizmo_config, _) = config_store.config_mut::<TransformGizmoGroup>();
-        gizmo_config.line.width = config.line_width;
-    }
-}
 
 fn transform_gizmo_hover(
     focus: Option<Single<&GlobalTransform, With<TransformGizmoFocus>>>,
     camera: Single<(&Camera, &GlobalTransform), With<MainCamera>>,
     window: Single<&Window, With<PrimaryWindow>>,
-    mode: Res<TransformGizmoMode>,
-    space: Res<TransformGizmoSpace>,
-    config: Res<TransformGizmoConfig>,
-    mut hover: ResMut<TransformGizmoHoverState>,
-    drag_state: Res<TransformGizmoDragState>,
+    settings: Res<TransformGizmoConfig>,
+    mut state: ResMut<TransformGizmoState>,
 ) {
-    hover.hovered_axis = None;
+    state.hovered_axis = None;
 
-    if drag_state.active {
+    if state.active {
         return;
     }
 
@@ -226,15 +202,11 @@ fn transform_gizmo_hover(
     };
 
     let gizmo_pos = global_tf.translation();
-    let effective_space = if *mode == TransformGizmoMode::Scale {
-        &TransformGizmoSpace::Local
-    } else {
-        &space
-    };
-    let rotation = gizmo_rotation(*global_tf, effective_space);
+    let space = effective_space(&settings);
+    let rotation = gizmo_rotation(*global_tf, space);
 
-    let scale = if config.screen_scale_factor > 0.0 {
-        (cam_tf.translation() - gizmo_pos).length() * config.screen_scale_factor
+    let scale = if settings.screen_scale_factor > 0.0 {
+        (cam_tf.translation() - gizmo_pos).length() * settings.screen_scale_factor
     } else {
         1.0
     };
@@ -247,13 +219,13 @@ fn transform_gizmo_hover(
 
     let mut best_axis = None;
     let mut best_dist = f32::MAX;
-    let threshold = config.axis_hit_distance;
+    let threshold = settings.axis_hit_distance;
 
     for (axis, dir) in &axes {
-        let dist = match *mode {
+        let dist = match settings.mode {
             TransformGizmoMode::Translate | TransformGizmoMode::Scale => {
                 let start = gizmo_pos + *dir * (AXIS_START_OFFSET * scale);
-                let endpoint = gizmo_pos + *dir * (config.axis_length * scale);
+                let endpoint = gizmo_pos + *dir * (settings.axis_length * scale);
                 let Some(start_screen) = camera.world_to_viewport(cam_tf, start).ok() else {
                     continue;
                 };
@@ -268,7 +240,7 @@ fn transform_gizmo_hover(
                 cam_tf,
                 gizmo_pos,
                 *dir,
-                config.rotate_ring_radius * scale,
+                settings.rotate_ring_radius * scale,
             ),
         };
         if dist < threshold && dist < best_dist {
@@ -277,7 +249,46 @@ fn transform_gizmo_hover(
         }
     }
 
-    hover.hovered_axis = best_axis;
+    // View handle hover detection
+    let view_dist = match settings.mode {
+        TransformGizmoMode::Translate => {
+            // Check if cursor is within the view-circle radius in screen space
+            if let Ok(center_screen) = camera.world_to_viewport(cam_tf, gizmo_pos) {
+                let screen_radius = VIEW_CIRCLE_MAJOR * scale;
+                // Approximate screen-space radius: project a point on the circle edge
+                let edge_world = gizmo_pos + cam_tf.right() * screen_radius;
+                if let Ok(edge_screen) = camera.world_to_viewport(cam_tf, edge_world) {
+                    let r = (edge_screen - center_screen).length();
+                    let d = (cursor_pos - center_screen).length();
+                    // Hit if within the torus ring area
+                    (d - r).abs()
+                } else {
+                    f32::MAX
+                }
+            } else {
+                f32::MAX
+            }
+        }
+        TransformGizmoMode::Rotate => {
+            // View ring: check distance to a screen-space circle
+            let cam_forward = cam_tf.forward().as_vec3();
+            point_to_ring_screen_dist(
+                cursor_pos,
+                camera,
+                cam_tf,
+                gizmo_pos,
+                cam_forward,
+                VIEW_RING_MAJOR * scale,
+            )
+        }
+        TransformGizmoMode::Scale => f32::MAX, // no view handle for scale
+    };
+
+    if view_dist < threshold && view_dist < best_dist {
+        best_axis = Some(TransformGizmoAxis::View);
+    }
+
+    state.hovered_axis = best_axis;
 }
 
 fn transform_gizmo_drag(
@@ -285,11 +296,10 @@ fn transform_gizmo_drag(
     camera: Single<(&Camera, &GlobalTransform), With<MainCamera>>,
     primary_window: Single<(&Window, &mut CursorOptions), With<PrimaryWindow>>,
     mouse: Res<ButtonInput<MouseButton>>,
-    mode: Res<TransformGizmoMode>,
-    space: Res<TransformGizmoSpace>,
     config: Res<TransformGizmoConfig>,
-    hover: Res<TransformGizmoHoverState>,
-    mut drag_state: ResMut<TransformGizmoDragState>
+    mut state: ResMut<TransformGizmoState>,
+    mut saved_grab_mode: Local<CursorGrabMode>,
+    mut changes: ResMut<Changes>
 ) {
     let (camera, cam_tf) = *camera;
     let (window, mut cursor_opts) = primary_window.into_inner();
@@ -309,18 +319,71 @@ fn transform_gizmo_drag(
     }
 
     // Start drag
-    if mouse.just_pressed(MouseButton::Left) && !drag_state.active {
-        if let Some(axis) = hover.hovered_axis {
-            drag_state.data.clear();
-            drag_state.active = true;
-            drag_state.axis = Some(axis);
-            drag_state.drag_start_screen = cursor_pos;
+    if mouse.just_pressed(MouseButton::Left) && !state.active {
+        if let Some(axis) = state.hovered_axis && let Some(focus_global_transform) = focus_global_transform{
+
+            let space = effective_space(&config);
+            let rotation = gizmo_rotation(&focus_global_transform, space);
+            let axis_dir = axis_direction(axis, rotation, cam_tf);
+            let gizmo_pos = focus_global_transform.translation();
+
+            let Ok(ray) = camera.viewport_to_world(cam_tf, cursor_pos) else {
+                return;
+            };
+
+            let drag_start_world = match config.mode {
+                TransformGizmoMode::Translate => {
+                    if axis == TransformGizmoAxis::View {
+                        // View-plane translate: use camera forward as normal
+                        let plane_normal = cam_tf.forward().as_vec3();
+                        let Some(intersection) = intersect_plane(ray, plane_normal, gizmo_pos)
+                        else {
+                            return;
+                        };
+                        intersection
+                    } else {
+                        let plane_normal = translation_plane_normal(ray, axis_dir);
+                        let Some(intersection) = intersect_plane(ray, plane_normal, gizmo_pos)
+                        else {
+                            return;
+                        };
+                        let cursor_vec = intersection - gizmo_pos;
+                        cursor_vec.dot(axis_dir.normalize()) * axis_dir.normalize() + gizmo_pos
+                    }
+                }
+                TransformGizmoMode::Scale => {
+                    let plane_normal = translation_plane_normal(ray, axis_dir);
+                    let Some(intersection) = intersect_plane(ray, plane_normal, gizmo_pos) else {
+                        return;
+                    };
+                    let cursor_vec = intersection - gizmo_pos;
+                    cursor_vec.dot(axis_dir.normalize()) * axis_dir.normalize() + gizmo_pos
+                }
+                TransformGizmoMode::Rotate => {
+                    let rot_axis = if axis == TransformGizmoAxis::View {
+                        cam_tf.forward().as_vec3()
+                    } else {
+                        axis_dir.normalize()
+                    };
+                    let Some(intersection) = intersect_plane(ray, rot_axis, gizmo_pos) else {
+                        return;
+                    };
+                    (intersection - gizmo_pos).normalize()
+                }
+            };
+
+            state.data.clear();
+            state.active = true;
+            state.axis = Some(axis);
+            state.drag_start_world = drag_start_world;
+            state.gizmo_origin = gizmo_pos;
 
             for (ghost_entity, _ghost_global_transform, ghost_transform, _maybe_gizmo) in ghosts.iter(){
-                drag_state.data.insert(ghost_entity, *ghost_transform);
+                state.data.insert(ghost_entity, *ghost_transform);
             }
             
             if config.confine_cursor {
+                *saved_grab_mode = cursor_opts.grab_mode;
                 cursor_opts.grab_mode = CursorGrabMode::Confined;
             }
         }
@@ -329,104 +392,145 @@ fn transform_gizmo_drag(
     }
 
     // Continue drag
-    if drag_state.active && mouse.pressed(MouseButton::Left) {
+    if state.active && mouse.pressed(MouseButton::Left) && let Some(global_tf) = focus_global_transform {
         if focus_entity.is_none(){
             return;
         };
-        let Some(axis) = drag_state.axis else {
+        let Some(axis) = state.axis else {
             return;
         };
-        let effective_space = if *mode == TransformGizmoMode::Scale {
-            &TransformGizmoSpace::Local
-        } else {
-            &space
-        };
-        let rotation = gizmo_rotation(&focus_global_transform.unwrap(), effective_space);
-        let axis_dir = match axis {
-            TransformGizmoAxis::X => rotation * Vec3::X,
-            TransformGizmoAxis::Y => rotation * Vec3::Y,
-            TransformGizmoAxis::Z => rotation * Vec3::Z,
+
+        let space = effective_space(&config);
+        let rotation = gizmo_rotation(&global_tf, space);
+        let axis_dir = axis_direction(axis, rotation, cam_tf);
+        let gizmo_origin = state.gizmo_origin;
+
+        let Ok(ray) = camera.viewport_to_world(cam_tf, cursor_pos) else {
+            return;
         };
 
-        let gizmo_pos = focus_global_transform.unwrap().translation();
-
-        match *mode {
+        match config.mode {
             TransformGizmoMode::Translate => {
-                let Some(origin_screen) = camera.world_to_viewport(cam_tf, gizmo_pos).ok() else {
-                    return;
-                };
-                let Some(axis_screen) = camera.world_to_viewport(cam_tf, gizmo_pos + axis_dir).ok()
-                else {
-                    return;
-                };
-                let screen_axis = (axis_screen - origin_screen).normalize_or_zero();
-                let mouse_delta = cursor_pos - drag_state.drag_start_screen;
-                let projected = mouse_delta.dot(screen_axis);
+                if axis == TransformGizmoAxis::View {
+                    // View-plane translate
+                    let plane_normal = cam_tf.forward().as_vec3();
+                    let Some(intersection) = intersect_plane(ray, plane_normal, gizmo_origin)
+                    else {
+                        return;
+                    };
+                    let delta = intersection - state.drag_start_world;
+                    for (dragged_entity, start_transform) in state.data.iter(){
+                        if let Ok((_ghost_entity, _ghost_global_transform, mut ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
+                            let new_pos = start_transform.translation + delta;
+                            ghost_transform.translation = match config.snap_translate {
+                                Some(inc) => Vec3::new(
+                                    snap_value(new_pos.x, inc),
+                                    snap_value(new_pos.y, inc),
+                                    snap_value(new_pos.z, inc),
+                                ),
+                                None => new_pos,
+                            };
+                        }
+                    }
 
-                let cam_dist = (cam_tf.translation() - gizmo_pos).length();
-                let scale = cam_dist * config.translate_sensitivity;
+                } else {
+                    let plane_normal = translation_plane_normal(ray, axis_dir);
+                    let Some(intersection) = intersect_plane(ray, plane_normal, gizmo_origin)
+                    else {
+                        return;
+                    };
+                    let cursor_vec = intersection - gizmo_origin;
+                    let axis_norm = axis_dir.normalize();
+                    let new_projected = cursor_vec.dot(axis_norm) * axis_norm + gizmo_origin;
+                    let delta = new_projected - state.drag_start_world;
 
-                let raw_delta = axis_dir * projected * scale;
-                let snapped_delta = match config.snap_translate {
-                    Some(inc) => snap_vec3(raw_delta, inc),
-                    None => raw_delta,
-                };
-
-                for (dragged_entity, start_transform) in drag_state.data.iter(){
-                    if let Ok((_ghost_entity, _ghost_global_transform, mut ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
-                        ghost_transform.translation = start_transform.translation + snapped_delta;
+                    for (dragged_entity, start_transform) in state.data.iter(){
+                        if let Ok((_ghost_entity, _ghost_global_transform, mut ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
+                            let new_pos = start_transform.translation + delta;
+                            ghost_transform.translation = match config.snap_translate {
+                                Some(inc) => {
+                                    snap_axis(new_pos, start_transform.translation, axis, inc)
+                                }
+                                None => new_pos,
+                            };
+                        }
                     }
                 }
-
             }
             TransformGizmoMode::Rotate => {
-                let mouse_delta = cursor_pos - drag_state.drag_start_screen;
-                let screen_axis = match axis {
-                    TransformGizmoAxis::X => Vec2::Y,
-                    TransformGizmoAxis::Y => Vec2::X,
-                    TransformGizmoAxis::Z => -Vec2::X,
+                let rot_axis = if axis == TransformGizmoAxis::View {
+                    cam_tf.forward().as_vec3()
+                } else {
+                    axis_dir.normalize()
                 };
-                let raw_angle = mouse_delta.dot(screen_axis) * config.rotate_sensitivity;
+                let Some(intersection) = intersect_plane(ray, rot_axis, gizmo_origin) else {
+                    return;
+                };
+                let cursor_vector = (intersection - gizmo_origin).normalize();
+                let drag_start = state.drag_start_world; // normalized direction
+
+                let dot = drag_start.dot(cursor_vector);
+                let det = rot_axis.dot(drag_start.cross(cursor_vector));
+                let raw_angle = bevy::math::ops::atan2(det, dot);
                 let angle = match config.snap_rotate {
                     Some(inc) => snap_value(raw_angle, inc),
                     None => raw_angle,
                 };
-                let rotation_delta = Quat::from_axis_angle(axis_dir, angle);
-                for (dragged_entity, start_transform) in drag_state.data.iter(){
+                let rotation_delta = Quat::from_axis_angle(rot_axis, angle);
+                for (dragged_entity, start_transform) in state.data.iter(){
                     if let Ok((_ghost_entity, _ghost_global_transform, mut ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
                         ghost_transform.rotation = rotation_delta * start_transform.rotation;
                     }
                 }
-
             }
             TransformGizmoMode::Scale => {
-                let Some(origin_screen) = camera.world_to_viewport(cam_tf, gizmo_pos).ok() else {
+                let plane_normal = translation_plane_normal(ray, axis_dir);
+                let Some(intersection) = intersect_plane(ray, plane_normal, gizmo_origin) else {
                     return;
                 };
-                let Some(axis_screen) = camera.world_to_viewport(cam_tf, gizmo_pos + axis_dir).ok()
-                else {
-                    return;
-                };
-                let screen_axis = (axis_screen - origin_screen).normalize_or_zero();
-                let mouse_delta = cursor_pos - drag_state.drag_start_screen;
-                let projected = mouse_delta.dot(screen_axis) * config.scale_sensitivity;
+                let axis_norm = axis_dir.normalize();
+                let cursor_projected = (intersection - gizmo_origin).dot(axis_norm);
+                let start_projected = (state.drag_start_world - gizmo_origin).dot(axis_norm);
 
-                for (dragged_entity, start_transform) in drag_state.data.iter(){
+                let scale_factor = if start_projected.abs() > f32::EPSILON {
+                    cursor_projected / start_projected
+                } else {
+                    1.0
+                };
+
+                for (dragged_entity, start_transform) in state.data.iter(){
                     let mut new_scale = start_transform.scale;
                     match axis {
                         TransformGizmoAxis::X => {
-                            new_scale.x = (new_scale.x + projected).max(MIN_SCALE);
+                            new_scale.x = (new_scale.x * scale_factor).max(MIN_SCALE);
                         }
                         TransformGizmoAxis::Y => {
-                            new_scale.y = (new_scale.y + projected).max(MIN_SCALE);
+                            new_scale.y = (new_scale.y * scale_factor).max(MIN_SCALE);
                         }
                         TransformGizmoAxis::Z => {
-                            new_scale.z = (new_scale.z + projected).max(MIN_SCALE);
+                            new_scale.z = (new_scale.z * scale_factor).max(MIN_SCALE);
+                        }
+                        TransformGizmoAxis::View => {
+                            // Uniform scale on view axis
+                            new_scale *= scale_factor;
+                            new_scale = new_scale.max(Vec3::splat(MIN_SCALE));
                         }
                     }
-                    if let Ok((_ghost_entity, _ghost_global_transform, mut ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
+
+                     if let Ok((_ghost_entity, _ghost_global_transform, mut ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
                         ghost_transform.scale = match config.snap_scale {
-                            Some(inc) => snap_vec3(new_scale, inc),
+                            Some(inc) => {
+                                let mut snapped = start_transform.scale;
+                                match axis {
+                                    TransformGizmoAxis::X => snapped.x = snap_value(new_scale.x, inc),
+                                    TransformGizmoAxis::Y => snapped.y = snap_value(new_scale.y, inc),
+                                    TransformGizmoAxis::Z => snapped.z = snap_value(new_scale.z, inc),
+                                    TransformGizmoAxis::View => {
+                                        snapped = Vec3::splat(snap_value(new_scale.x, inc));
+                                    }
+                                }
+                                snapped
+                            }
                             None => new_scale,
                         };
                     }
@@ -437,136 +541,65 @@ fn transform_gizmo_drag(
     }
 
     // End drag
-    if drag_state.active && mouse.just_released(MouseButton::Left) {
-        drag_state.active = false;
-        drag_state.axis = None;
-        drag_state.data.clear();
+    if state.active && mouse.just_released(MouseButton::Left) {
+        state.active = false;
+        state.axis = None;
+
+        // Record changes
+        let mut changeset = ChangesSet::new();
+        for (dragged_entity, start_transform) in state.data.iter(){
+            if let Ok((_ghost_entity, _ghost_global_transform, ghost_transform, _maybe_gizmo)) = ghosts.get_mut(*dragged_entity){
+                let ct = ChangeTransform{entity: *dragged_entity, old: *start_transform, new: *ghost_transform};
+                changeset.add(ct);
+            }
+        }
+        changeset.record(&mut changes);
+
+        state.data.clear();
         if config.confine_cursor {
-            cursor_opts.grab_mode = CursorGrabMode::None;
+            cursor_opts.grab_mode = *saved_grab_mode;
         }
     }
 }
 
-fn transform_gizmo_draw(
-    mut gizmos: Gizmos<TransformGizmoGroup>,
-    focus: Option<Single<&GlobalTransform, With<TransformGizmoFocus>>>,
-    camera: Single<(&Camera, &GlobalTransform), With<MainCamera>>,
-    mode: Res<TransformGizmoMode>,
-    space: Res<TransformGizmoSpace>,
-    config: Res<TransformGizmoConfig>,
-    hover: Res<TransformGizmoHoverState>,
-    drag_state: Res<TransformGizmoDragState>,
-) {
 
-    let Some(global_tf) = focus else {
-        return;
-    };
-    let pos = global_tf.translation();
-    let effective_space = if *mode == TransformGizmoMode::Scale {
-        &TransformGizmoSpace::Local
+/// Get the world-space direction for a given axis.
+pub fn axis_direction(axis: TransformGizmoAxis, rotation: Quat, cam_tf: &GlobalTransform) -> Vec3 {
+    match axis {
+        TransformGizmoAxis::X => rotation * Vec3::X,
+        TransformGizmoAxis::Y => rotation * Vec3::Y,
+        TransformGizmoAxis::Z => rotation * Vec3::Z,
+        TransformGizmoAxis::View => cam_tf.forward().as_vec3(),
+    }
+}
+
+/// Construct the constraint plane normal for axis translation/scale.
+///
+/// The plane contains the drag axis and is oriented to face the camera as much
+/// as possible, matching the approach from `bevy_transform_gizmo`.
+pub fn translation_plane_normal(ray: Ray3d, axis: Vec3) -> Vec3 {
+    let vertical = Vec3::from(ray.direction).cross(axis);
+    if vertical.length_squared() < f32::EPSILON {
+        // Ray is nearly parallel to the axis -- pick an arbitrary perpendicular.
+        return axis.any_orthonormal_vector();
+    }
+    axis.cross(vertical.normalize()).normalize()
+}
+
+/// Intersect a ray with a plane defined by a normal and a point on the plane.
+pub fn intersect_plane(ray: Ray3d, plane_normal: Vec3, plane_origin: Vec3) -> Option<Vec3> {
+    let denominator = Vec3::from(ray.direction).dot(plane_normal);
+    if denominator.abs() > f32::EPSILON {
+        let point_to_point = plane_origin - ray.origin;
+        let intersect_dist = plane_normal.dot(point_to_point) / denominator;
+        Some(Vec3::from(ray.direction) * intersect_dist + ray.origin)
     } else {
-        &space
-    };
-    let rotation = gizmo_rotation(*global_tf, effective_space);
-
-    let scale = if config.screen_scale_factor > 0.0 {
-        let (_, cam_tf) = *camera;
-        (cam_tf.translation() - pos).length() * config.screen_scale_factor
-    } else {
-        1.0
-    };
-
-    let right = rotation * Vec3::X;
-    let up = rotation * Vec3::Y;
-    let forward = rotation * Vec3::Z;
-
-    let active_axis = if drag_state.active {
-        drag_state.axis
-    } else {
-        hover.hovered_axis
-    };
-    let dragging = drag_state.active;
-
-    let x_color = axis_color(TransformGizmoAxis::X, active_axis, dragging);
-    let y_color = axis_color(TransformGizmoAxis::Y, active_axis, dragging);
-    let z_color = axis_color(TransformGizmoAxis::Z, active_axis, dragging);
-
-    let length = config.axis_length * scale;
-
-    match *mode {
-        TransformGizmoMode::Translate => {
-            let tip = AXIS_TIP_LENGTH * scale;
-            let offset = AXIS_START_OFFSET * scale;
-            gizmos
-                .arrow(pos + right * offset, pos + right * length, x_color)
-                .with_tip_length(tip);
-            gizmos
-                .arrow(pos + up * offset, pos + up * length, y_color)
-                .with_tip_length(tip);
-            gizmos
-                .arrow(pos + forward * offset, pos + forward * length, z_color)
-                .with_tip_length(tip);
-        }
-        TransformGizmoMode::Rotate => {
-            let radius = config.rotate_ring_radius * scale;
-            gizmos.circle(
-                Isometry3d::new(pos, Quat::from_rotation_arc(Vec3::Z, right)),
-                radius,
-                x_color,
-            );
-            gizmos.circle(
-                Isometry3d::new(pos, Quat::from_rotation_arc(Vec3::Z, up)),
-                radius,
-                y_color,
-            );
-            gizmos.circle(
-                Isometry3d::new(pos, Quat::from_rotation_arc(Vec3::Z, forward)),
-                radius,
-                z_color,
-            );
-        }
-        TransformGizmoMode::Scale => {
-            let cube_half = SCALE_CUBE_SIZE * scale;
-            let offset = AXIS_START_OFFSET * scale;
-            for (dir, color) in [(right, x_color), (up, y_color), (forward, z_color)] {
-                let end = pos + dir * length;
-                gizmos.line(pos + dir * offset, end, color);
-                // Wireframe cube at endpoint
-                let x = Vec3::X * cube_half;
-                let y = Vec3::Y * cube_half;
-                let z = Vec3::Z * cube_half;
-                let corners = [
-                    end - x - y - z,
-                    end + x - y - z,
-                    end + x + y - z,
-                    end - x + y - z,
-                    end - x - y + z,
-                    end + x - y + z,
-                    end + x + y + z,
-                    end - x + y + z,
-                ];
-                // Bottom face
-                gizmos.line(corners[0], corners[1], color);
-                gizmos.line(corners[1], corners[2], color);
-                gizmos.line(corners[2], corners[3], color);
-                gizmos.line(corners[3], corners[0], color);
-                // Top face
-                gizmos.line(corners[4], corners[5], color);
-                gizmos.line(corners[5], corners[6], color);
-                gizmos.line(corners[6], corners[7], color);
-                gizmos.line(corners[7], corners[4], color);
-                // Verticals
-                gizmos.line(corners[0], corners[4], color);
-                gizmos.line(corners[1], corners[5], color);
-                gizmos.line(corners[2], corners[6], color);
-                gizmos.line(corners[3], corners[7], color);
-            }
-        }
+        None
     }
 }
 
 /// Distance from a point to a line segment in 2D.
-fn point_to_segment_dist(point: Vec2, a: Vec2, b: Vec2) -> f32 {
+pub fn point_to_segment_dist(point: Vec2, a: Vec2, b: Vec2) -> f32 {
     let ab = b - a;
     let ap = point - a;
     let t = (ap.dot(ab) / ab.length_squared()).clamp(0.0, 1.0);
@@ -574,7 +607,8 @@ fn point_to_segment_dist(point: Vec2, a: Vec2, b: Vec2) -> f32 {
     (point - closest).length()
 }
 
-fn point_to_ring_screen_dist(
+/// Minimum screen-space distance from a cursor position to a 3D ring projected onto screen.
+pub fn point_to_ring_screen_dist(
     cursor: Vec2,
     camera: &Camera,
     cam_tf: &GlobalTransform,
@@ -582,7 +616,18 @@ fn point_to_ring_screen_dist(
     normal: Vec3,
     radius: f32,
 ) -> f32 {
-    const RING_SAMPLES: usize = 16;
+    // Quick reject: if cursor is far from the ring center in screen space, skip sampling
+    if let Ok(center_screen) = camera.world_to_viewport(cam_tf, center)
+        && let Ok(edge_screen) = camera.world_to_viewport(cam_tf, center + cam_tf.right() * radius)
+    {
+        let screen_radius = (edge_screen - center_screen).length();
+        let cursor_dist = (cursor - center_screen).length();
+        if (cursor_dist - screen_radius).abs() > screen_radius * 0.5 {
+            return f32::MAX;
+        }
+    }
+
+    const RING_SAMPLES: usize = 64;
     let rot = Quat::from_rotation_arc(Vec3::Z, normal);
     let mut min_dist = f32::MAX;
     let mut prev_screen = None;
@@ -611,7 +656,17 @@ fn point_to_ring_screen_dist(
     min_dist
 }
 
-fn gizmo_rotation(global_tf: &GlobalTransform, space: &TransformGizmoSpace) -> Quat {
+/// Return the effective space for the gizmo: scale always uses local space.
+pub fn effective_space(settings: &TransformGizmoConfig) -> &TransformGizmoSpace {
+    if settings.mode == TransformGizmoMode::Scale {
+        &TransformGizmoSpace::Local
+    } else {
+        &settings.space
+    }
+}
+
+/// Compute the gizmo rotation based on the space setting.
+pub fn gizmo_rotation(global_tf: &GlobalTransform, space: &TransformGizmoSpace) -> Quat {
     match space {
         TransformGizmoSpace::World => Quat::IDENTITY,
         TransformGizmoSpace::Local => {
@@ -621,35 +676,29 @@ fn gizmo_rotation(global_tf: &GlobalTransform, space: &TransformGizmoSpace) -> Q
     }
 }
 
-fn axis_color(
-    axis: TransformGizmoAxis,
-    active: Option<TransformGizmoAxis>,
-    dragging: bool,
-) -> Color {
-    let is_active = active == Some(axis);
-    let (normal, bright) = match axis {
-        TransformGizmoAxis::X => (COLOR_X, COLOR_X_BRIGHT),
-        TransformGizmoAxis::Y => (COLOR_Y, COLOR_Y_BRIGHT),
-        TransformGizmoAxis::Z => (COLOR_Z, COLOR_Z_BRIGHT),
-    };
-
-    if is_active {
-        bright
-    } else if dragging {
-        normal.with_alpha(INACTIVE_ALPHA)
-    } else {
-        normal
-    }
-}
-
 fn snap_value(value: f32, increment: f32) -> f32 {
     (value / increment).round() * increment
 }
 
-fn snap_vec3(v: Vec3, increment: f32) -> Vec3 {
-    Vec3::new(
-        snap_value(v.x, increment),
-        snap_value(v.y, increment),
-        snap_value(v.z, increment),
-    )
+/// Snap only the component along the dragged axis, leaving others unchanged.
+fn snap_axis(position: Vec3, original: Vec3, axis: TransformGizmoAxis, increment: f32) -> Vec3 {
+    match axis {
+        TransformGizmoAxis::X => {
+            Vec3::new(snap_value(position.x, increment), original.y, original.z)
+        }
+        TransformGizmoAxis::Y => {
+            Vec3::new(original.x, snap_value(position.y, increment), original.z)
+        }
+        TransformGizmoAxis::Z => {
+            Vec3::new(original.x, original.y, snap_value(position.z, increment))
+        }
+        TransformGizmoAxis::View => {
+            // Snap all axes uniformly
+            Vec3::new(
+                snap_value(position.x, increment),
+                snap_value(position.y, increment),
+                snap_value(position.z, increment),
+            )
+        }
+    }
 }

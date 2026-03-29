@@ -11,7 +11,7 @@ use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, St
 
 use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
-use crate::transform_gizmo::{TransformGizmoFocus, TransformGizmoHoverState};
+use crate::transform_gizmo::{TransformGizmoFocus, TransformGizmoState};
 
 pub struct PGEditorGhostPlugin{
     pub spawner_mesh: fn(id: usize, meshes: &mut ResMut<Assets<Mesh>>, materials: &mut ResMut<Assets<StandardMaterial>>) -> (Handle<Mesh>, Handle<StandardMaterial>),
@@ -189,7 +189,7 @@ fn toggle_ghost(
     query:              Query<(Entity, &MeshMaterial3d<StandardMaterial>, Option<&Ghost>, Option<&TransformGizmoFocus>), With<EditorAsset>>,
     focus:              Query<Entity, With<TransformGizmoFocus>>,
     ghosts:             Query<Entity, With<Ghost>>,
-    gizmo_hover_state:  Res<TransformGizmoHoverState>,
+    gizmo_state:  Res<TransformGizmoState>,
     state:              Res<State<GameStatePlay>>,
     keys:               Res<ButtonInput<KeyCode>>,
 
@@ -230,7 +230,7 @@ fn toggle_ghost(
                 } 
             }
 
-            if let Some(_hovered_axis) = gizmo_hover_state.hovered_axis {
+            if let Some(_hovered_axis) = gizmo_state.hovered_axis {
                 if remove_ghost {
                     commands.entity(trigger.entity).try_remove::<Ghost>();
                     commands.entity(trigger.entity).try_remove::<TransformGizmoFocus>();
