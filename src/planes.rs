@@ -9,6 +9,7 @@ pub fn plane_mesh(
 ) -> impl Bundle {
     (
         Mesh3d(meshes.add(Plane3d::default().mesh().size(width, height).subdivisions(subdivisions))),
+        Pickable::default(),
         PlaneToEdit{width, height, subdivisions}
     )
 }
