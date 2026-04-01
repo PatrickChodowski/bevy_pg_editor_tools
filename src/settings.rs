@@ -15,10 +15,7 @@ pub struct EditorSettings {
     pub brush_id: usize,
     pub brush_radius: f32,
     pub brush_typ: Box<dyn BrushType>,
-    pub plane_dims: Vec2,
-    pub plane_subdivisions: u32,
     pub plane_save_chunks: u32,
-    pub plane_loc:  Vec3,
     pub plane_wireframe: bool
 }
 impl EditorSettings {
@@ -37,10 +34,7 @@ impl EditorSettings {
             brush_id: 0,
             brush_radius: 10.0,
             brush_typ: Box::new(NothingBrush),
-            plane_dims: Vec2::ONE,
-            plane_subdivisions: 1,
             plane_save_chunks: 1,
-            plane_loc: Vec3::ZERO,
             plane_wireframe: false
         }
     }

@@ -6,7 +6,9 @@ use bevy::prelude::*;
 use bevy::picking::hover::HoverMap;
 use bevy::picking::pointer::PointerId;
 use bevy_simple_text_input::{
-    TextInput, TextInputInactive, TextInputPlugin, TextInputSettings, TextInputSystem, TextInputTextColor, TextInputTextFont, TextInputValue
+    TextInput, TextInputInactive, TextInputPlugin, TextInputSettings, 
+    TextInputSystem, TextInputTextColor, TextInputTextFont, TextInputValue,
+    TextInputPlaceholder
 };
 
 use bevy_pg_core::prelude::{FlyCamController, GameStatePlay};
@@ -27,6 +29,9 @@ pub(crate) struct LocInputY;
 #[derive(Component)]
 pub(crate) struct LocInputZ;
 
+#[derive(Component)]
+pub(crate) struct PlaneInput;
+
 
 #[derive(Component)]
 pub(crate) struct PlaneDimXInput;
@@ -39,6 +44,115 @@ pub(crate) struct PlaneSubsInput;
 
 #[derive(Component)]
 pub(crate) struct PlaneChunksInput;
+
+
+
+
+
+pub(crate) fn plane_input_field(
+    font_size: f32, 
+    border_size: f32, 
+    padding: f32, 
+    margin: f32, 
+) -> impl Bundle {
+
+    let input_node_width: f32 = 60.0;
+
+    (
+        Node {
+            width: Val::Percent(90.0),
+            border: UiRect::all(Val::Px(border_size)),
+            padding: UiRect::all(Val::Px(padding)),
+            margin: UiRect::all(Val::Px(margin)),
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        PlaneInput,
+        BorderColor::all(Color::from(BLACK)),
+        BackgroundColor(GRAY_800.into()),
+        children![
+            (
+                Node {
+                    width: Val::Px(input_node_width),
+                    border: UiRect::all(Val::Px(2.0)),
+                    padding: UiRect::all(Val::Px(2.0)),
+                    margin: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BorderColor::all(Color::from(BLACK)),
+                BackgroundColor(WHITE.into()),
+                TextInput,
+                PlaneDimXInput,
+                TextInputPlaceholder{value: "1.0".to_string(), ..default()},
+                TextInputTextFont(TextFont {
+                    font_size: font_size,
+                    ..default()
+                }),
+                TextInputSettings{
+                    retain_on_submit: true,
+                    mask_character: None,
+                    max_length: Some(5)
+                },
+                TextInputTextColor(TextColor(BLACK.into())),
+                TextInputInactive(true),
+            ),
+            (
+                Node {
+                    width: Val::Px(input_node_width),
+                    border: UiRect::all(Val::Px(2.0)),
+                    padding: UiRect::all(Val::Px(2.0)),
+                    margin: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BorderColor::all(Color::from(BLACK)),
+                BackgroundColor(WHITE.into()),
+                TextInput,
+                PlaneDimZInput,
+                TextInputPlaceholder{value: "1.0".to_string(), ..default()},
+                TextInputTextFont(TextFont {
+                    font_size: font_size,
+                    ..default()
+                }),
+                TextInputSettings{
+                    retain_on_submit: true,
+                    mask_character: None,
+                    max_length: Some(5)
+                },
+                TextInputTextColor(TextColor(BLACK.into())),
+                TextInputInactive(true),
+            ),
+            (
+                Node {
+                    width: Val::Px(input_node_width),
+                    border: UiRect::all(Val::Px(2.0)),
+                    padding: UiRect::all(Val::Px(2.0)),
+                    margin: UiRect::all(Val::Px(2.0)),
+                    ..default()
+                },
+                BorderColor::all(Color::from(BLACK)),
+                BackgroundColor(WHITE.into()),
+                TextInput,
+                PlaneSubsInput,
+                TextInputPlaceholder{value: "0".to_string(), ..default()},
+                TextInputTextFont(TextFont {
+                    font_size: font_size,
+                    ..default()
+                }),
+                TextInputSettings{
+                    retain_on_submit: true,
+                    mask_character: None,
+                    max_length: Some(5)
+                },
+                TextInputTextColor(TextColor(BLACK.into())),
+                TextInputInactive(true),
+            )
+        ]
+    )
+}
+
 
 
 
@@ -80,6 +194,7 @@ pub(crate) fn loc_input_field(
                 BackgroundColor(WHITE.into()),
                 TextInput,
                 LocInputX,
+                TextInputPlaceholder{value: "0.0".to_string(), ..default()},
                 TextInputTextFont(TextFont {
                     font_size: font_size,
                     ..default()
@@ -104,6 +219,7 @@ pub(crate) fn loc_input_field(
                 BackgroundColor(WHITE.into()),
                 TextInput,
                 LocInputY,
+                TextInputPlaceholder{value: "0.0".to_string(), ..default()},
                 TextInputTextFont(TextFont {
                     font_size: font_size,
                     ..default()
@@ -128,6 +244,7 @@ pub(crate) fn loc_input_field(
                 BackgroundColor(WHITE.into()),
                 TextInput,
                 LocInputZ,
+                TextInputPlaceholder{value: "0.0".to_string(), ..default()},
                 TextInputTextFont(TextFont {
                     font_size: font_size,
                     ..default()

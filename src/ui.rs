@@ -20,7 +20,7 @@ use crate::prelude::{
     ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
     EditorMode, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
 };
-use crate::text_inputs::loc_input_field;
+use crate::text_inputs::{loc_input_field, plane_input_field};
 
 
 pub struct PGEditorUIPlugin;
@@ -844,61 +844,62 @@ fn new_plane_settings(
             ..default()
         },
         children![
-            (Text::new("Width")),
-            (
-                slider(
-                    SliderProps {
-                        max: 100.0,
-                        value: editor_settings.plane_dims.x,
-                        min: 0.0,
-                        ..default()
-                    },
-                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
-                ),
-                observe(slider_self_update),
-                observe(
-                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.plane_dims.x = value_change.value;
-                    }
-                )
-            ),
-            (Text::new("Height")),
-            (
-                slider(
-                    SliderProps {
-                        max: 100.0,
-                        value: editor_settings.plane_dims.y,
-                        min: 0.0,
-                        ..default()
-                    },
-                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
-                ),
-                observe(slider_self_update),
-                observe(
-                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.plane_dims.y = value_change.value;
-                    }
-                )
-            ),
-            (Text::new("Subdivisions")),
-            (
-                slider(
-                    SliderProps {
-                        max: 50.0,
-                        value: editor_settings.plane_subdivisions as f32,
-                        min: 0.0,
-                        ..default()
-                    },
-                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
-                ),
-                observe(slider_self_update),
-                observe(
-                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.plane_subdivisions = value_change.value as u32;
-                    }
-                )
-            ),
-
+        //     (Text::new("Width")),
+        //     (
+        //         slider(
+        //             SliderProps {
+        //                 max: 100.0,
+        //                 value: editor_settings.plane_dims.x,
+        //                 min: 0.0,
+        //                 ..default()
+        //             },
+        //             (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+        //         ),
+        //         observe(slider_self_update),
+        //         observe(
+        //             |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+        //                 editor_settings.plane_dims.x = value_change.value;
+        //             }
+        //         )
+        //     ),
+        //     (Text::new("Height")),
+        //     (
+        //         slider(
+        //             SliderProps {
+        //                 max: 100.0,
+        //                 value: editor_settings.plane_dims.y,
+        //                 min: 0.0,
+        //                 ..default()
+        //             },
+        //             (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+        //         ),
+        //         observe(slider_self_update),
+        //         observe(
+        //             |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+        //                 editor_settings.plane_dims.y = value_change.value;
+        //             }
+        //         )
+        //     ),
+        //     (Text::new("Subdivisions")),
+        //     (
+        //         slider(
+        //             SliderProps {
+        //                 max: 50.0,
+        //                 value: editor_settings.plane_subdivisions as f32,
+        //                 min: 0.0,
+        //                 ..default()
+        //             },
+        //             (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
+        //         ),
+        //         observe(slider_self_update),
+        //         observe(
+        //             |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
+        //                 editor_settings.plane_subdivisions = value_change.value as u32;
+        //             }
+        //         )
+        //     ),
+            (Text::new("Dims")),
+            plane_input_field(15.0, 3.0, 4.0, 10.0),
             (Text::new("Loc")),
             loc_input_field(15.0, 3.0, 4.0, 10.0),
             (Text::new("Chunks")),

@@ -133,7 +133,7 @@ impl Default for TransformGizmoConfig {
             axis_length: AXIS_LENGTH,
             rotate_ring_radius: ROTATE_RING_RADIUS,
             axis_hit_distance: AXIS_HIT_DISTANCE,
-            snap_translate: None,
+            snap_translate: Some(1.0),
             snap_rotate: None,
             snap_scale: None,
             confine_cursor: true,
