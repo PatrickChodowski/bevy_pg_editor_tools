@@ -47,8 +47,7 @@ pub struct PGEditorPlugin{
     pub markers_mapping: fn(name: String) -> Marker,
     pub spawners_mapping: fn(name: String, maybe_data: &Option<HashMap<String, String>>) -> Spawner,
     pub brush_mapping: fn(commands: &mut Commands, brush_id: usize, editor_settings: &ResMut<EditorSettings>) -> Box<dyn BrushType>,
-    pub brush_id_labels: Vec<(usize, &'static str)>,
-    pub vertex_radius: f32
+    pub brush_id_labels: Vec<(usize, &'static str)>
 }
 
 impl Plugin for PGEditorPlugin {
@@ -66,9 +65,7 @@ impl Plugin for PGEditorPlugin {
                 PGEditorControllerPlugin,
                 TransformGizmoPlugin,
                 TransformGizmoRenderPlugin,
-                PGEditorVertexPlugin{
-                    vertex_radius: self.vertex_radius
-                },
+                PGEditorVertexPlugin,
                 PGEditorGhostPlugin{
                     spawner_mesh: self.spawner_mesh,
                     marker_mesh: self.marker_mesh,

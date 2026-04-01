@@ -10,26 +10,14 @@ use bevy_pg_core::prelude::GameStatePlay;
 
 use crate::planes::PlaneToEdit;
 
-pub struct PGEditorVertexPlugin {
-    pub vertex_radius: f32
-}
+pub struct PGEditorVertexPlugin;
 
-impl PGEditorVertexPlugin {
-    pub fn new(vertex_radius: f32) -> Self {
-        PGEditorVertexPlugin {
-            vertex_radius
-        }
-    }
-}
 
 impl Plugin for PGEditorVertexPlugin {
     fn build(&self, app: &mut App) {
         app
         .add_input_context::<TerrainVertexController>()
         .add_systems(Startup, init)
-        .insert_resource(VertexPluginSettings::new(
-            self.vertex_radius
-        ))
         .add_observer(on_spawn_vertices)
         .add_observer(on_plane_edit_add)
         .add_observer(on_remove_plane)
@@ -88,33 +76,20 @@ pub fn terrain_vertex_controller() -> impl Bundle {
 }
 
 #[derive(Resource)]
-struct VertexPluginSettings {
-    radius: f32
-}
-impl VertexPluginSettings {
-    fn new(radius: f32) -> Self {
-        VertexPluginSettings{radius}
-    }
-}
-
-#[derive(Resource)]
 pub struct VertexRefs {
     mesh_handle: Mesh3d,
     selected_mat_handle: MeshMaterial3d<StandardMaterial>,
-    mat_handle: MeshMaterial3d<StandardMaterial>,
-    pub radius: f32
+    mat_handle: MeshMaterial3d<StandardMaterial>
 }
 
 fn init(
     mut commands:   Commands,
     mut meshes:     ResMut<Assets<Mesh>>,
-    mut materials:  ResMut<Assets<StandardMaterial>>,
-    vertex_plugin_settings:    Res<VertexPluginSettings>
+    mut materials:  ResMut<Assets<StandardMaterial>>
 ){
     commands.insert_resource(
         VertexRefs{
-            radius: vertex_plugin_settings.radius,
-            mesh_handle: Mesh3d(meshes.add(Sphere{radius: vertex_plugin_settings.radius, ..default()})),
+            mesh_handle: Mesh3d(meshes.add(Sphere{radius: 1.0, ..default()})),
             mat_handle: MeshMaterial3d(materials.add(Color::BLACK.with_alpha(0.85))),
             selected_mat_handle: MeshMaterial3d(materials.add(Color::from(ORANGE_RED).with_alpha(0.85)))
         }
@@ -178,22 +153,27 @@ pub struct HideVertices;
 fn on_plane_edit_add(
     trigger:      On<Add, PlaneToEdit>,
     mut commands: Commands,
+    planes:       Query<&PlaneToEdit>,
     query:        Query<&Mesh3d>,
     meshes:       Res<Assets<Mesh>>,
     vertex_refs:  Res<VertexRefs>
 ){
-    let Ok(mesh3d) = query.get(trigger.entity) else {return;};
-    let Some(mesh) = meshes.get(&mesh3d.0) else {return;};
+    let Ok(mesh3d) = query.get(trigger.entity) else {return};
+    let Some(mesh) = meshes.get(&mesh3d.0) else {return};
     let (v_pos, v_clr) = extract_mesh_data(mesh);
     let mut vertices: Vec<Entity> = Vec::new();
+    let Ok(plane) = planes.get(trigger.entity) else {return};
+
+    let scale = plane.height.max(plane.width)*0.1;
+
     for (index, pos) in v_pos.iter().enumerate(){
         let entity = commands.spawn((
             vertex_refs.mat_handle.clone(),
             vertex_refs.mesh_handle.clone(),
             NotShadowCaster,
             NotShadowReceiver,
-            Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(1.0)),
-            PlaneVertex::new(index, pos, &v_clr[index], vertex_refs.radius, trigger.entity),
+            Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(scale)),
+            PlaneVertex::new(index, pos, &v_clr[index], scale, trigger.entity),
             DespawnOnExit(GameStatePlay::Editor),
             Visibility::Hidden
         )).id();
@@ -206,23 +186,25 @@ fn on_plane_edit_add(
 fn on_spawn_vertices(
     trigger:      On<SpawnVertices>,
     mut commands: Commands,
-    query:        Query<&Mesh3d, With<PlaneToEdit>>,
+    query:        Query<(&Mesh3d, &PlaneToEdit)>,
     meshes:       Res<Assets<Mesh>>,
     vertex_refs:  Res<VertexRefs>
 ){
-    let Ok(mesh3d) = query.get(trigger.plane_entity) else {return;};
+    let Ok((mesh3d, plane)) = query.get(trigger.plane_entity) else {return;};
     let Some(mesh) = meshes.get(&mesh3d.0) else {return;};
     let (v_pos, v_clr) = extract_mesh_data(mesh);
     let mut vertices: Vec<Entity> = Vec::new();
-    info!("on spawn vertices");
+
+    let scale = plane.height.max(plane.width)*0.1;
+
     for (index, pos) in v_pos.iter().enumerate(){
         let entity = commands.spawn((
             vertex_refs.mat_handle.clone(),
             vertex_refs.mesh_handle.clone(),
             NotShadowCaster,
             NotShadowReceiver,
-            Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(1.0)),
-            PlaneVertex::new(index, pos, &v_clr[index], vertex_refs.radius, trigger.plane_entity),
+            Transform::from_translation(pos.clone().into()).with_scale(Vec3::splat(scale)),
+            PlaneVertex::new(index, pos, &v_clr[index], scale, trigger.plane_entity),
             DespawnOnExit(GameStatePlay::Editor),
             Visibility::Hidden
         )).id();
