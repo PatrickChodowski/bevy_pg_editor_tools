@@ -164,7 +164,7 @@ fn on_plane_edit_add(
     let mut vertices: Vec<Entity> = Vec::new();
     let Ok(plane) = planes.get(trigger.entity) else {return};
 
-    let scale = plane.height.max(plane.width)*0.1;
+    let scale = plane.calculate_optimal_vertex_radius(0.3);
 
     for (index, pos) in v_pos.iter().enumerate(){
         let entity = commands.spawn((
@@ -195,7 +195,7 @@ fn on_spawn_vertices(
     let (v_pos, v_clr) = extract_mesh_data(mesh);
     let mut vertices: Vec<Entity> = Vec::new();
 
-    let scale = plane.height.max(plane.width)*0.1;
+    let scale = plane.calculate_optimal_vertex_radius(0.3);
 
     for (index, pos) in v_pos.iter().enumerate(){
         let entity = commands.spawn((

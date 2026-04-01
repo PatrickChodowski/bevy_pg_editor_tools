@@ -53,7 +53,7 @@ impl BrushType for TerrainHeightBrush {
                         let old_y: f32 = vertex_transform.translation.y;
                         vertex_transform.translation.y += y;
                         let cph = ChangePlaneHeight::new(vertex_entity, old_y, vertex_transform.translation.y);
-                        info!("Changing Vertex {} Y from {} to {}", vertex_entity, old_y, vertex_transform.translation.y);
+                        // info!("Changing Vertex {} Y from {} to {}", vertex_entity, old_y, vertex_transform.translation.y);
                         cph.record(&mut changes);
                     }
                     HeightBrushType::Terraces(terraces) => {

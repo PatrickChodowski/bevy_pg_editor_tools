@@ -12,6 +12,7 @@ pub mod controller;
 pub mod ghost;
 pub mod tracker;
 pub mod export_scene_obj;
+pub mod editor_pointer;
 pub mod thumbnails;
 pub mod noises;
 pub mod planes;
@@ -27,6 +28,7 @@ use assets_panel::PGEditorAssetsPanelPlugin;
 use brushes::{PGEditorBrushSelectPlugin, BrushSelectController};
 use box_select::PGEditorBoxSelectPlugin;
 use controller::{PGEditorControllerPlugin, EditorController};
+use editor_pointer::PGEditorPointer;
 use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorGhostTransformMemory};
 use planes::PlaneToEdit;
 use settings::EditorSettings;
@@ -56,6 +58,7 @@ impl Plugin for PGEditorPlugin {
         .add_plugins(
             (
                 WireframePlugin::default(),
+                PGEditorPointer,
                 PGEditorTrackerPlugin,
                 PGEditorBrushSelectPlugin,
                 PGEditorBoxSelectPlugin,

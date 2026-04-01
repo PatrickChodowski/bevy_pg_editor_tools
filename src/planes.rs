@@ -9,7 +9,7 @@ pub fn plane_mesh(
 ) -> impl Bundle {
     (
         Mesh3d(meshes.add(Plane3d::default().mesh().size(width, height).subdivisions(subdivisions))),
-        Pickable::default(),
+        Pickable{should_block_lower: true, ..default()},
         PlaneToEdit{width, height, subdivisions}
     )
 }
@@ -80,6 +80,15 @@ impl PlaneToEdit {
         } else {
             return None;
         }
+    }
+
+    pub fn calculate_optimal_vertex_radius(&self, percentage: f32) -> f32 {
+        let spacing_x = self.height / (self.subdivisions+1).max(1) as f32;
+        let spacing_y = self.width / (self.subdivisions+1).max(1) as f32;
+        let min_spacing = spacing_x.min(spacing_y);
+        let max_radius = min_spacing / 2.0;
+        let safe_fill = percentage.clamp(0.01, 0.99);
+        max_radius * safe_fill
     }
 }
 

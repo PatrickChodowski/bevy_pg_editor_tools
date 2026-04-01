@@ -6,12 +6,12 @@ use bevy_enhanced_input::prelude::Cancel;
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
 use bevy_enhanced_input::prelude::*;
-use bevy_pg_core::prelude::PointerData;
 use dyn_clone::DynClone;
 use rand::Rng;
 use rand::seq::IndexedRandom;
 use bevy_pg_nav::prelude::PGNavmesh;
 
+use crate::editor_pointer::EditorPointer;
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
 use crate::ghost::{EditorAsset, EditorGhostSettings, Ghost, editor_asset_bundle};
@@ -89,7 +89,7 @@ struct BrushSelectUpdate;
 
 fn start_brush(
     _trigger:          On<Start<BrushSelectUpdate>>,
-    input_data:        Res<PointerData>,
+    input_data:        Res<EditorPointer>,
     mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
     mut materials:     ResMut<Assets<StandardMaterial>>,
@@ -104,7 +104,7 @@ fn start_brush(
         commands.entity(brush_entity).despawn();
     }
 
-    let Some(world_pos) = input_data.world_pos else {return};
+    let Some(world_pos) = input_data.loc else {return};
     let loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
     let brush = Brush{
         loc, 
@@ -141,7 +141,7 @@ fn start_brush(
 
 fn update_brush(
     _trigger:               On<Fire<BrushSelectUpdate>>,
-    input_data:             Res<PointerData>,
+    input_data:             Res<EditorPointer>,
     mut brush_transform:    Single<&mut Transform, With<BrushMarker>>,
     mut brush:              ResMut<Brush>,
     editor_settings:   Res<EditorSettings>
@@ -150,7 +150,7 @@ fn update_brush(
         return;
     }
 
-    let Some(world_pos) = input_data.world_pos else {return};
+    let Some(world_pos) = input_data.loc else {return};
     if world_pos.xz() != brush.loc.xz(){
         brush.loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
         brush_transform.translation = brush.loc;
