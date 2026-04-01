@@ -7,7 +7,6 @@ use crate::brushes::{NothingBrush, BrushType};
 pub struct EditorSettings {
     pub color: Color,
     pub snap_nav: bool,
-    // pub multi_ghost: bool,
     pub show_spawners: bool,
     pub show_markers: bool,
     pub mode: EditorMode,
@@ -16,11 +15,11 @@ pub struct EditorSettings {
     pub brush_id: usize,
     pub brush_radius: f32,
     pub brush_typ: Box<dyn BrushType>,
-    pub plane_width: f32,
-    pub plane_height: f32,
+    pub plane_dims: Vec2,
     pub plane_subdivisions: u32,
     pub plane_save_chunks: u32,
-    pub plane_loc:  Vec3
+    pub plane_loc:  Vec3,
+    pub plane_wireframe: bool
 }
 impl EditorSettings {
     pub fn new(
@@ -30,7 +29,6 @@ impl EditorSettings {
         Self {
             color: Color::from(GRAY_500),
             snap_nav: true,
-            // multi_ghost: false,
             show_spawners: false,
             show_markers: false,
             mode: EditorMode::Scene,
@@ -39,11 +37,11 @@ impl EditorSettings {
             brush_id: 0,
             brush_radius: 10.0,
             brush_typ: Box::new(NothingBrush),
-            plane_height: 50.0,
-            plane_width: 50.0,
+            plane_dims: Vec2::ONE,
             plane_subdivisions: 1,
             plane_save_chunks: 1,
-            plane_loc: Vec3::ZERO
+            plane_loc: Vec3::ZERO,
+            plane_wireframe: false
         }
     }
 }

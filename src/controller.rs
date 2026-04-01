@@ -1,3 +1,4 @@
+use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
 use bevy::mesh::SerializedMesh;
 use bevy::tasks::IoTaskPool;
@@ -41,6 +42,7 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_markers_vis)
         .add_observer(toggle_spawners_vis)
         .add_observer(toggle_nav_snap)
+        .add_observer(toggle_plane_wireframe)
         .add_observer(change_brush)
         .add_observer(turn_off_editor)
         .add_observer(toggle_editor_panel)
@@ -113,15 +115,19 @@ fn spawn_plane(
     let loc = Vec3::new(x, y, z);
 
     let plane_entity = commands.spawn((
-        plane_mesh(editor_settings.plane_width, editor_settings.plane_height, editor_settings.plane_subdivisions, &mut meshes),
+        plane_mesh(editor_settings.plane_dims.x, editor_settings.plane_dims.y, editor_settings.plane_subdivisions, &mut meshes),
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
         Transform::from_translation(loc)
     )).id();
 
+    if editor_settings.plane_wireframe {
+        commands.entity(plane_entity).insert(Wireframe);
+    }
+
     let cps = ChangePlaneSpawn::new(
         plane_entity, 
-        editor_settings.plane_width, 
-        editor_settings.plane_height, 
+        editor_settings.plane_dims.x, 
+        editor_settings.plane_dims.y, 
         editor_settings.plane_subdivisions,
         loc
     );
@@ -230,6 +236,25 @@ fn toggle_spawners_vis(
         }
     }
 }
+
+
+fn toggle_plane_wireframe(
+    trigger: On<TogglePlaneWireframe>,
+    mut commands: Commands,
+    query: Query<Entity, With<PlaneToEdit>>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.plane_wireframe = trigger.visible;
+
+    for entity in query.iter(){
+        if trigger.visible {
+            commands.entity(entity).insert(Wireframe);
+        } else {
+            commands.entity(entity).try_remove::<Wireframe>();
+        }
+    }
+}
+
 
 fn on_fire_save_scene(
      _trigger: On<Fire<SaveScene>>,
@@ -410,6 +435,13 @@ pub struct ToggleMarkersVis {
 pub struct ToggleSpawnersVis {
     pub visible: bool
 }
+
+#[derive(InputAction, Event)]
+#[action_output(bool)]
+pub struct TogglePlaneWireframe {
+    pub visible: bool
+}
+
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]

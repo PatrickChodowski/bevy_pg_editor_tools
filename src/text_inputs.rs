@@ -28,6 +28,21 @@ pub(crate) struct LocInputY;
 pub(crate) struct LocInputZ;
 
 
+#[derive(Component)]
+pub(crate) struct PlaneDimXInput;
+
+#[derive(Component)]
+pub(crate) struct PlaneDimZInput;
+
+#[derive(Component)]
+pub(crate) struct PlaneSubsInput;
+
+#[derive(Component)]
+pub(crate) struct PlaneChunksInput;
+
+
+
+
 pub(crate) fn loc_input_field(
     font_size: f32, 
     border_size: f32, 

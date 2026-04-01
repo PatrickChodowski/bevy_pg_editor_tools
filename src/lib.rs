@@ -3,6 +3,7 @@ use bevy::platform::collections::HashMap;
 use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static};
 use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
+use bevy::pbr::wireframe::WireframePlugin;
 
 pub mod assets_panel;
 pub mod box_select;
@@ -55,6 +56,7 @@ impl Plugin for PGEditorPlugin {
         app
         .add_plugins(
             (
+                WireframePlugin::default(),
                 PGEditorTrackerPlugin,
                 PGEditorBrushSelectPlugin,
                 PGEditorBoxSelectPlugin,

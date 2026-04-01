@@ -14,7 +14,7 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy_pg_core::prelude::GameStatePlay;
 use bevy_pg_nav::prelude::NavConfig;
 
-use crate::controller::SerializePlane;
+use crate::controller::{SerializePlane, TogglePlaneWireframe};
 use crate::prelude::{
     ToggleMarkersVis, ToggleSnapNav, EditorSettings, 
     ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, SaveScene, NavMeshGeneration, 
@@ -46,15 +46,6 @@ pub struct BrushControls;
 
 #[derive(Component)]
 pub struct PlaneControls;
-
-// #[derive(Component)]
-// struct RadioButtonAxis {
-//     value: GhostTransformAxis
-// }
-// #[derive(Component)]
-// struct RadioButtonMode {
-//     value: GhostTransformMode
-// }
 
 #[derive(Component)]
 struct RadioButtonBrush {
@@ -114,6 +105,7 @@ fn init_editor_ui(
         empty_row(&mut commands, 15.0),
         label_section(&mut commands, "Plane Settings"),
         new_plane_settings(&mut commands, &editor_settings),
+        plane_wireframe_checkbox(&mut commands, &editor_settings),
         empty_row(&mut commands, 40.0),
         buttons(&mut commands),
         empty_row(&mut commands, 10.0),
@@ -792,6 +784,50 @@ fn brush_radius_slider(
     )).id()
 }
 
+fn plane_wireframe_checkbox(
+    commands: &mut Commands,
+    editor_settings: &Res<EditorSettings>
+) -> Entity {
+
+    let local_root = commands.spawn(
+        (
+            Node {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Start,
+                column_gap: px(8),
+                ..default()
+            },
+            PlaneControls
+        )
+    ).id();
+
+    let entity1: Entity = if editor_settings.plane_wireframe {
+        commands.spawn(checkbox((Checked, PlaneControls, EditorControls), Spawn((Text::new("Wireframe"), ThemedText)))).id()
+    } else {
+        commands.spawn(checkbox((PlaneControls, EditorControls), Spawn((Text::new("Wireframe"), ThemedText)))).id()
+    };
+    commands.entity(entity1).insert(
+        observe(
+            |change: On<ValueChange<bool>>, mut commands: Commands| {
+                commands.trigger(TogglePlaneWireframe{visible: change.value});
+                let mut checkbox = commands.entity(change.source);
+                if change.value {
+                    checkbox.insert(Checked);
+                } else {
+                    checkbox.remove::<Checked>();
+                }
+            }
+        )   
+    );
+
+
+    commands.entity(local_root).add_children(&vec![entity1]);
+    return local_root;
+
+}
+
 
 fn new_plane_settings(
     commands: &mut Commands,
@@ -813,7 +849,7 @@ fn new_plane_settings(
                 slider(
                     SliderProps {
                         max: 100.0,
-                        value: editor_settings.plane_width,
+                        value: editor_settings.plane_dims.x,
                         min: 0.0,
                         ..default()
                     },
@@ -822,7 +858,7 @@ fn new_plane_settings(
                 observe(slider_self_update),
                 observe(
                     |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.plane_width = value_change.value;
+                        editor_settings.plane_dims.x = value_change.value;
                     }
                 )
             ),
@@ -831,7 +867,7 @@ fn new_plane_settings(
                 slider(
                     SliderProps {
                         max: 100.0,
-                        value: editor_settings.plane_height,
+                        value: editor_settings.plane_dims.y,
                         min: 0.0,
                         ..default()
                     },
@@ -840,7 +876,7 @@ fn new_plane_settings(
                 observe(slider_self_update),
                 observe(
                     |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.plane_height = value_change.value;
+                        editor_settings.plane_dims.y = value_change.value;
                     }
                 )
             ),
