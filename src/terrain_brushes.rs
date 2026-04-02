@@ -60,9 +60,11 @@ impl BrushType for TerrainHeightBrush {
                         for terrace in terraces {
                             if vertex_transform.translation.y >= terrace.min && vertex_transform.translation.y <= terrace.max {
                                 let old_y: f32 = vertex_transform.translation.y;
-                                vertex_transform.translation.y = terrace.value;
-                                let cph = ChangePlaneHeight::new(vertex_entity, old_y, vertex_transform.translation.y);
-                                cph.record(&mut changes);
+                                if old_y != terrace.value {
+                                    vertex_transform.translation.y = terrace.value;
+                                    let cph = ChangePlaneHeight::new(vertex_entity, old_y, vertex_transform.translation.y);
+                                    cph.record(&mut changes);
+                                }
                                 continue;
                             }
                         }
@@ -75,9 +77,12 @@ impl BrushType for TerrainHeightBrush {
                         }
                         let new_y: f32 = combined_noise*noises.1;
                         let old_y: f32 = vertex_transform.translation.y;
-                        vertex_transform.translation.y = new_y;
-                        let cph = ChangePlaneHeight::new(vertex_entity, old_y, new_y);
-                        cph.record(&mut changes);
+
+                        if vertex_transform.translation.y != new_y{
+                            vertex_transform.translation.y = new_y;
+                            let cph = ChangePlaneHeight::new(vertex_entity, old_y, new_y);
+                            cph.record(&mut changes);
+                        }
                     }
                 }
 
@@ -137,9 +142,11 @@ impl BrushType for TerrainColorBrush {
                 commands.entity(vertex_entity).insert(SelectedVertex);
                 match &self.typ {
                     ColorBrushType::Value{clr} => {
-                        let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, *clr);
-                        c.record(&mut changes);
-                        plane_vertex.clr = *clr;
+                        if clr != &plane_vertex.clr {
+                            let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, *clr);
+                            c.record(&mut changes);
+                            plane_vertex.clr = *clr;
+                        }
                     }
                     ColorBrushType::Noise { data, value, clr} => {
 
@@ -150,10 +157,11 @@ impl BrushType for TerrainColorBrush {
                         }
                         let alpha: f32 = combined_noise*value;
                         let new_clr =  [clr[0], clr[1], clr[2], alpha.clamp(0.0, 1.0)];
-                        let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, new_clr);
-                        c.record(&mut changes);
-                        plane_vertex.clr = new_clr;
-
+                        if new_clr != plane_vertex.clr {
+                            let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, new_clr);
+                            c.record(&mut changes);
+                            plane_vertex.clr = new_clr;
+                        }
                     }
                     ColorBrushType::Range { min, max, min_clr, max_clr } => {
                         if &global_loc.y >= min && &global_loc.y <= max {
@@ -164,10 +172,13 @@ impl BrushType for TerrainColorBrush {
                                 min_clr[2] + (max_clr[2] - min_clr[2]) * norm_y,
                                 min_clr[3] + (max_clr[3] - min_clr[3]) * norm_y,
                             ];
-                            let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, interpolated_clr);
-                            c.record(&mut changes);
 
-                            plane_vertex.clr = interpolated_clr;
+                            if interpolated_clr != plane_vertex.clr  {
+                                let c = ChangePlaneColor::new(vertex_entity, plane_vertex.clr, interpolated_clr);
+                                c.record(&mut changes);
+
+                                plane_vertex.clr = interpolated_clr;
+                            }
                         }
                     }
                 }

@@ -1,10 +1,9 @@
 # todo:
 - add texture paint brush
 - add UI per brush type with settings
-
-
-
-
-# Issues:
-- undo/redo for color brushes?
-
+- terrain chunking
+- plane context menu
+- dont depend on navmesh when spawning
+- bring back rotate around origin
+- spawn navmesh colliders
+- add quests and scripts triggers in editor

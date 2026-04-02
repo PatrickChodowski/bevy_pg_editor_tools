@@ -246,11 +246,17 @@ fn deselect_all_vertices(
 pub struct DeselectAllVertices;
 
 fn vertex_changed(
-    mut vertices:   Query<&PlaneVertex, (With<SelectedVertex>, Changed<PlaneVertex>)>,
-    plane_meshes:   Query<&Mesh3d, With<PlaneToEdit>>,
-    mut meshes:     ResMut<Assets<Mesh>>
+    mut changed_vertices:   Query<(Entity, &PlaneVertex), Changed<PlaneVertex>>,
+    added_vertices:         Query<Entity, Added<PlaneVertex>>,
+    plane_meshes:           Query<&Mesh3d, With<PlaneToEdit>>,
+    mut meshes:             ResMut<Assets<Mesh>>
 ){
-    for plane_vertex in vertices.iter_mut(){
+    for (vertex_entity, plane_vertex) in changed_vertices.iter_mut(){
+
+        if added_vertices.contains(vertex_entity){
+            continue;
+        }
+
         let Ok(plane_mesh_3d) = plane_meshes.get(plane_vertex.plane_entity) else {continue};
         let Some(plane_mesh) = meshes.get_mut(&plane_mesh_3d.0) else {continue};
         let (mut v_pos, mut v_clr) = extract_mesh_data(plane_mesh);
