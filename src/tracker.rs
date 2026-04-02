@@ -447,6 +447,69 @@ impl Change for ChangePlaneSpawn {
 }
 
 
+#[derive(Clone)]
+pub struct ChangePlaneDespawn {
+    entity: Entity,
+    width: f32,
+    height: f32,
+    subdivisions: u32,
+    loc: Vec3
+}
+impl ChangePlaneDespawn {
+    pub fn new(
+        entity: Entity, 
+        width: f32,
+        height: f32,
+        subdivisions: u32,
+        loc: Vec3
+    ) -> ChangePlaneDespawn {
+        Self {
+            entity, width, height, subdivisions, loc
+        }
+    }
+}
+
+impl Change for ChangePlaneDespawn {
+    fn undo(
+        &mut self, 
+        world:      &mut World
+    ) {
+        let mut system_state: SystemState<(
+            ResMut<Assets<Mesh>>,
+            ResMut<Assets<StandardMaterial>>,
+            Commands,
+        )> = SystemState::new(world);
+
+        let (mut meshes, mut materials, mut commands) = system_state.get_mut(world);
+
+        let entity = commands.spawn(
+            (
+                plane_mesh(self.width, self.height, self.subdivisions, &mut meshes),
+                MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
+                Transform::from_translation(self.loc)
+            )
+        ).id();
+        self.entity = entity;    
+        system_state.apply(world);  
+    }
+
+    fn redo(
+        &mut self, 
+        world: &mut World
+    ) {
+        world.despawn(self.entity); 
+    }
+    
+    fn record(
+        &self,
+        changes: &mut ResMut<Changes> 
+    ) {
+        changes.record(Box::new(self.clone()));
+    }
+}
+
+
+
 
 #[derive(Clone)]
 pub struct ChangePlaneHeight {
