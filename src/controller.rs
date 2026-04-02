@@ -37,8 +37,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(on_fire_save_scene)
         .add_observer(save_scene)
         .add_observer(delete_object)
-        .add_observer(navmesh_generation)
-
         .add_observer(toggle_navmesh_debug)
         .add_observer(toggle_markers_vis)
         .add_observer(toggle_spawners_vis)
@@ -51,7 +49,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(change_editor_mode)
 
         .add_observer(spawn_plane)
-        .add_observer(serialize_plane)
         ;
     }
 }
@@ -63,29 +60,6 @@ fn toggle_navmesh_debug(
     navconfig.debug = trigger.value;
 }
 
-fn serialize_plane(
-    _trigger:           On<SerializePlane>,
-    query:              Query<(&Mesh3d, Option<&Name>), With<PlaneToEdit>>,
-    meshes:             Res<Assets<Mesh>>,
-    editor_settings:    Res<EditorSettings>
-){
-    info!("[EDITOR] serialize planes");
-    for (index, (mesh3d, maybe_name)) in query.iter().enumerate(){
-        let Some(mesh) = meshes.get(&mesh3d.0) else {continue};
-        let serialized_mesh = SerializedMesh::from_mesh(mesh.clone());
-        let pg_serialized_mesh = PGSerializedMesh{data: serialized_mesh};
-        let json = serde_json::to_string_pretty(&pg_serialized_mesh).unwrap();
-        let mesh_path: String;
-        if let Some(name) = maybe_name {
-            mesh_path = format!("assets/meshes/{}.mesh.json", name);
-        } else {
-            mesh_path = format!("assets/meshes/{}.mesh.json", index);
-        }
-        info!("serializing to path: {}", mesh_path);
-        let res = std::fs::write(mesh_path, json);
-        info!("{:?}", res);
-    }
-}
 
 fn string_to_f32(s: &str) -> Option<f32> {
     let trimmed = s.trim();
@@ -434,11 +408,6 @@ pub struct SpawnPlane;
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]
-pub struct SerializePlane;
-
-
-#[derive(InputAction, Event)]
-#[action_output(bool)]
 pub struct TriggerThumbnails;
 
 
@@ -654,8 +623,6 @@ pub struct ToggleSnapNav {
 struct DeleteObject;
 
 
-#[derive(Event)]
-pub struct NavMeshGeneration;
 
 #[derive(InputAction)]
 #[action_output(bool)]
@@ -737,29 +704,6 @@ fn delete_object(
     }
     if despawns.len() > 0 {
         despawns.record(&mut changes);
-    }
-}
-
-fn navmesh_generation(
-    _trigger:       On<NavMeshGeneration>,
-    mut commands:   Commands,
-    current_chunk:  Res<CurrentChunk>,
-    terrain_chunks: Query<(&TerrainChunk, &Name)>,
-    mapsdata:       Res<MapsData>
-){
-    for (terrain_chunk, name) in terrain_chunks.iter(){
-        if (terrain_chunk.map_name == current_chunk.map_name) &
-           (terrain_chunk.chunk_id == current_chunk.chunk_id) {
-
-            commands.write_message(GenerateNavMesh::new(
-                name.to_string(), 
-                &current_chunk.map_name, 
-                &current_chunk.chunk_id,
-                mapsdata.chunk_size
-            
-            ));
-            break;
-        }
     }
 }
 

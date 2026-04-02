@@ -30,7 +30,7 @@ use box_select::PGEditorBoxSelectPlugin;
 use controller::{PGEditorControllerPlugin, EditorController};
 use editor_pointer::PGEditorPointer;
 use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorGhostTransformMemory};
-use planes::PlaneToEdit;
+use planes::{PlaneToEdit, PGEditorPlanesPlugin};
 use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use text_inputs::PGEditorTextInputs;
@@ -75,6 +75,7 @@ impl Plugin for PGEditorPlugin {
                     markers_mapping: self.markers_mapping,
                     spawners_mapping: self.spawners_mapping
                 },
+                PGEditorPlanesPlugin,
                 PGEditorUIPlugin
             )
         )
@@ -265,7 +266,7 @@ pub mod prelude {
         PGEditorControllerPlugin, editor_controller, EditorController, 
         TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
         ToggleSnapNav, 
-        ChangeEditorMode, NavMeshGeneration, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, SpawnPlane, ToggleNavmeshDebug
+        ChangeEditorMode, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, SpawnPlane, ToggleNavmeshDebug
     };
     pub use crate::ghost::{
         PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, 
