@@ -46,9 +46,8 @@ impl EditorPointer {
 fn update_pointer(
     mut editor_pointer: ResMut<EditorPointer>,
     hovermap:           Res<HoverMap>,
-    // primary:            Single<&Window, With<PrimaryWindow>>,
     camera_entity:      Single<Entity, With<MainCamera>>,
-    planes:             Query<(Entity, &Transform), With<PlaneToEdit>>,
+    planes:             Query<&PlaneToEdit>,
     nodes:              Query<Entity, With<Node>>,
 ){
     editor_pointer.reset();
@@ -58,17 +57,14 @@ fn update_pointer(
             continue;
         }
         let Some(hit_position) = hit_data.position else {continue};
-        if let Ok((plane_entity, plane_transform)) = planes.get(*entity){
-            editor_pointer.plane_entity = Some(plane_entity);
-            editor_pointer.loc = Some(plane_transform.translation + hit_position);
+        if planes.contains(*entity){
+            editor_pointer.plane_entity = Some(*entity);
+            editor_pointer.loc = Some(hit_position);
         }
         if let Ok(_node_entity) = nodes.get(*entity){
             editor_pointer.reset();
             return;
         }
     }
-    // if let Some(editor_pointer_loc) = editor_pointer.loc {
-    //     info!("Editor pointer loc: {}", editor_pointer_loc);
-    // }
 }
 

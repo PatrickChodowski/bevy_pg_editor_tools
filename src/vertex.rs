@@ -1,11 +1,11 @@
 use bevy::math::f32;
 use bevy::prelude::*;
+use bevy::input::common_conditions::input_just_pressed;
 use bevy::mesh::SerializedMesh;
 use bevy::mesh::VertexAttributeValues;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::color::palettes::css::ORANGE_RED;
 use bevy_enhanced_input::prelude::*;
-use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::GameStatePlay;
 
 use crate::planes::PlaneToEdit;
@@ -16,13 +16,13 @@ pub struct PGEditorVertexPlugin;
 impl Plugin for PGEditorVertexPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_input_context::<TerrainVertexController>()
         .add_systems(Startup, init)
         .add_observer(on_spawn_vertices)
         .add_observer(on_plane_edit_add)
         .add_observer(on_remove_plane)
         .add_observer(select_vertex)
         .add_observer(deselect_vertex)
+        .add_systems(Update, input_delesect_all_vertices.run_if(input_just_pressed(MouseButton::Right)))
         .add_observer(deselect_all_vertices)
         .add_systems(Update, vertex_changed)
         .add_observer(show_vertices)
@@ -57,23 +57,6 @@ pub fn load_mesh_from_file(path: &str) -> std::io::Result<Mesh> {
     return Ok(serialized.into_mesh());
 }
 
-#[derive(Component, Reflect)]
-pub struct TerrainVertexController;
-
-pub fn terrain_vertex_controller() -> impl Bundle {
-    return (
-        TerrainVertexController,
-        actions!(
-            TerrainVertexController[
-                (
-                    Action::<DeselectAllVertices>::new(),
-                    Press::default(),
-                    bindings![MouseButton::Right]
-                )
-            ]
-        )
-    );
-}
 
 #[derive(Resource)]
 pub struct VertexRefs {
@@ -242,8 +225,14 @@ fn deselect_vertex(
     commands.entity(trigger.entity).try_insert(vertex_refs.mat_handle.clone());
 }
 
+fn input_delesect_all_vertices(
+    mut commands: Commands
+){
+    commands.trigger(DeselectAllVertices);
+}
+
 fn deselect_all_vertices(
-    _trigger: On<Fire<DeselectAllVertices>>,
+    _trigger: On<DeselectAllVertices>,
     mut commands: Commands,
     query:  Query<Entity, With<SelectedVertex>>
 ){
@@ -252,22 +241,23 @@ fn deselect_all_vertices(
     }
 }
 
-#[derive(InputAction)]
+#[derive(InputAction, Event)]
 #[action_output(bool)]
-struct DeselectAllVertices;
+pub struct DeselectAllVertices;
 
 fn vertex_changed(
     mut vertices:   Query<&PlaneVertex, (With<SelectedVertex>, Changed<PlaneVertex>)>,
-    plane_mesh3d:   Single<&Mesh3d, With<PlaneToEdit>>,
+    plane_meshes:   Query<&Mesh3d, With<PlaneToEdit>>,
     mut meshes:     ResMut<Assets<Mesh>>
 ){
-    let Some(plane_mesh) = meshes.get_mut(&plane_mesh3d.0) else {return;};
-    let (mut v_pos, mut v_clr) = extract_mesh_data(plane_mesh);
     for plane_vertex in vertices.iter_mut(){
+        let Ok(plane_mesh_3d) = plane_meshes.get(plane_vertex.plane_entity) else {continue};
+        let Some(plane_mesh) = meshes.get_mut(&plane_mesh_3d.0) else {continue};
+        let (mut v_pos, mut v_clr) = extract_mesh_data(plane_mesh);
         v_pos[plane_vertex.index] = plane_vertex.loc;
         v_clr[plane_vertex.index] = plane_vertex.clr;
+        plane_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
+        plane_mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, v_clr);
+        plane_mesh.compute_normals();
     }
-    plane_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
-    plane_mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, v_clr);
-    plane_mesh.compute_normals();
 }

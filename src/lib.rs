@@ -25,7 +25,7 @@ pub mod transform_gizmo_render;
 pub mod transform_gizmo;
 
 use assets_panel::PGEditorAssetsPanelPlugin;
-use brushes::{PGEditorBrushSelectPlugin, BrushSelectController};
+use brushes::{PGEditorBrushSelectPlugin};
 use box_select::PGEditorBoxSelectPlugin;
 use controller::{PGEditorControllerPlugin, EditorController};
 use editor_pointer::PGEditorPointer;
@@ -110,7 +110,6 @@ fn init_editor(
         ),
     >,
     editor: Query<Entity, With<EditorController>>,
-    brush: Query<Entity, With<BrushSelectController>>,
     mut camera: Query<(Entity, &mut MainCamera)>,
     mut spawnees: Query<&mut Visibility, With<Spawnee>>,
     spawners: Query<(Entity, &Spawner, &Name)>,
@@ -123,11 +122,6 @@ fn init_editor(
     for terrain_entity in terrains.iter() {
         commands.entity(terrain_entity).insert(PlaneToEdit::dummy());
     }
-
-    let Ok(entity) = brush.single() else { return };
-    commands
-        .entity(entity)
-        .insert(ContextActivity::<BrushSelectController>::ACTIVE);
 
     let Ok((camera_entity, mut camera_data)) = camera.single_mut() else {
         return;
@@ -197,7 +191,6 @@ fn exit_editor(
     statics: Query<Entity, With<Static>>,
     mut camera: Query<(Entity, &mut Transform, &mut MainCamera), Without<Player>>,
     editor: Query<Entity, With<EditorController>>,
-    brush: Query<Entity, With<BrushSelectController>>,
     mut spawnees: Query<&mut Visibility, With<Spawnee>>,
     spawners_markers: Query<Entity, Or<(With<Spawner>, With<Marker>)>>,
     player: Query<&Transform, With<Player>>,
@@ -228,13 +221,6 @@ fn exit_editor(
     commands
         .entity(editor_entity)
         .insert(ContextActivity::<EditorController>::INACTIVE);
-
-    let Ok(brush_entity) = brush.single() else {
-        return;
-    };
-    commands
-        .entity(brush_entity)
-        .insert(ContextActivity::<BrushSelectController>::INACTIVE);
 
     for entity in statics.iter() {
         commands.entity(entity).remove::<Pickable>();
@@ -272,8 +258,8 @@ pub mod prelude {
         BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin
     };
     pub use crate::brushes::{
-        BrushSelectController, brush_select_controller, brush_changed, BrushDone, BrushStart,
-         Brush, PGEditorBrushSelectPlugin, BrushType, ScatterBrush, NothingBrush
+        brush_changed, BrushDone, BrushStart,
+        Brush, PGEditorBrushSelectPlugin, BrushType, ScatterBrush, NothingBrush
     };
     pub use crate::controller::{
         PGEditorControllerPlugin, editor_controller, EditorController, 
@@ -291,8 +277,7 @@ pub mod prelude {
     };
     pub use crate::planes::{PlaneToEdit, plane_mesh};
     pub use crate::vertex::{
-        SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, 
-        TerrainVertexController, VertexRefs, terrain_vertex_controller, ShowVertices, HideVertices
+        SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, VertexRefs, ShowVertices, HideVertices
     };
     pub use crate::terrain_brushes::{
         TerrainHeightBrush, TerrainColorBrush, HeightBrushType, ColorBrushType

@@ -1,11 +1,10 @@
+use bevy::input::common_conditions::{input_just_pressed, input_pressed, input_just_released};
 use bevy::platform::collections::HashMap;
 use bevy::ecs::system::SystemState;
 use bevy::color::palettes::tailwind::BLUE_500;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
-use bevy_enhanced_input::prelude::Cancel;
 use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
-use bevy_enhanced_input::prelude::*;
 use dyn_clone::DynClone;
 use rand::Rng;
 use rand::seq::IndexedRandom;
@@ -22,12 +21,15 @@ pub struct PGEditorBrushSelectPlugin;
 impl Plugin for PGEditorBrushSelectPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_input_context::<BrushSelectController>()
         .add_message::<BrushStart>()
         .add_message::<BrushDone>()
-        .add_observer(start_brush)
-        .add_observer(update_brush)
-        .add_observer(end_brush)
+        .add_systems(Update, 
+            (
+                start_brush.run_if(input_just_pressed(MouseButton::Left)),
+                update_brush.run_if(input_pressed(MouseButton::Left)),
+                end_brush.run_if(input_just_released(MouseButton::Left))
+            ).chain()
+        )
         .add_systems(Update, 
             (
                 brush_started.run_if(on_message::<BrushStart>),
@@ -69,26 +71,9 @@ fn brush_final(
 }
 
 
-#[derive(Component, Reflect)]
-pub struct BrushSelectController;
-
-pub fn brush_select_controller() -> impl Bundle {
-    return (
-        BrushSelectController,
-        Actions::<BrushSelectController>::spawn(
-            SpawnWith(|context: &mut ActionSpawner<_>| {
-                 context.spawn((Action::<BrushSelectUpdate>::new(), Down::default(), bindings![MouseButton::Left]));
-        })) 
-    );
-}
-
-#[derive(InputAction)]
-#[action_output(bool)]
-struct BrushSelectUpdate;
 
 
 fn start_brush(
-    _trigger:          On<Start<BrushSelectUpdate>>,
     input_data:        Res<EditorPointer>,
     mut commands:      Commands,
     mut meshes:        ResMut<Assets<Mesh>>,
@@ -140,11 +125,10 @@ fn start_brush(
 }
 
 fn update_brush(
-    _trigger:               On<Fire<BrushSelectUpdate>>,
     input_data:             Res<EditorPointer>,
     mut brush_transform:    Single<&mut Transform, With<BrushMarker>>,
     mut brush:              ResMut<Brush>,
-    editor_settings:   Res<EditorSettings>
+    editor_settings:        Res<EditorSettings>
 ){
     if editor_settings.mode != EditorMode::Brushes {
         return;
@@ -152,13 +136,12 @@ fn update_brush(
 
     let Some(world_pos) = input_data.loc else {return};
     if world_pos.xz() != brush.loc.xz(){
-        brush.loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
+        brush.loc = Vec3::new(world_pos.x, world_pos.y + 0.1, world_pos.z);
         brush_transform.translation = brush.loc;
     }
 }
 
 fn end_brush(
-    _trigger:       On<Cancel<BrushSelectUpdate>>,
     mut commands:   Commands,
     brush_entity:   Single<Entity, With<BrushMarker>>,
     editor_settings:   Res<EditorSettings>

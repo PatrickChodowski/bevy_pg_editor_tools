@@ -21,7 +21,7 @@ use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoFocus, Transfor
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::planes::{PlaneToEdit, plane_mesh};
 use crate::settings::{EditorMode, EditorSettings};
-use crate::vertex::HideVertices;
+use crate::vertex::{DeselectAllVertices, HideVertices};
 
 pub struct PGEditorControllerPlugin;
 
@@ -162,6 +162,7 @@ fn change_editor_mode(
     editor_settings.mode = trigger.value;
     commands.trigger(UnghostAll);
     commands.trigger(HideVertices);
+    commands.trigger(DeselectAllVertices);
 
     match editor_settings.mode {
         EditorMode::Scene => {
