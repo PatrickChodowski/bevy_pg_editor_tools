@@ -17,10 +17,11 @@ use crate::assets_panel::EditorAssetPanel;
 use crate::text_inputs::{LocInputX, LocInputY, LocInputZ, PlaneDimXInput, PlaneDimZInput, PlaneSubsInput};
 use crate::tracker::{Change, ChangeDespawn, ChangePlaneSpawn, ChangeTransform, Changes, ChangesSet, CurrentTransformChanges, Redo, Undo};
 use crate::ghost::{EditorAsset, Ghost};
-use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoMode};
+use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoFocus, TransformGizmoMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::planes::{PlaneToEdit, plane_mesh};
 use crate::settings::{EditorMode, EditorSettings};
+use crate::vertex::HideVertices;
 
 pub struct PGEditorControllerPlugin;
 
@@ -159,9 +160,12 @@ fn change_editor_mode(
     controls: Query<(Entity, Option<&BrushControls>, Option<&SceneControls>, Option<&PlaneControls>), With<EditorControls>>
 ){
     editor_settings.mode = trigger.value;
-    
+    commands.trigger(UnghostAll);
+    commands.trigger(HideVertices);
+
     match editor_settings.mode {
         EditorMode::Scene => {
+            
             for (entity, _brush, scene, _plane) in controls.iter(){
                 if scene.is_some(){
                     commands.entity(entity).remove::<InteractionDisabled>();
@@ -772,5 +776,6 @@ fn unghost_all(
 ){
     for entity in query.iter(){
         commands.entity(entity).remove::<Ghost>();
+        commands.entity(entity).try_remove::<TransformGizmoFocus>();
     }
 }
