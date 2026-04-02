@@ -6,6 +6,5 @@
 
 
 # Issues:
-- Color brush doesnt work with multiple planes?
-- Height stopped working on moved plane?
+- undo/redo for color brushes?
 
