@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::feathers::*;
 use bevy::feathers::controls::{
-    ButtonProps, SliderProps, ButtonVariant, ColorSliderProps, ColorChannel, ColorSwatch,  
+    ButtonProps, SliderProps, ColorSliderProps, ColorChannel, ColorSwatch,  
     button, checkbox, radio, slider, color_slider, color_swatch, ColorSlider, SliderBaseColor
 };
 use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText, UiTheme};
@@ -17,7 +17,7 @@ use bevy_pg_nav::prelude::NavConfig;
 use crate::controller::TogglePlaneWireframe;
 use crate::prelude::{
     ToggleMarkersVis, ToggleSnapNav, EditorSettings, 
-    ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, SaveScene, 
+    ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, 
     EditorMode, TriggerThumbnails, ToggleNavmeshDebug
 };
 use crate::planes::SpawnPlane;
@@ -105,10 +105,9 @@ fn init_editor_ui(
         terrain_color(&mut commands, &editor_settings),
         empty_row(&mut commands, 15.0),
         label_section(&mut commands, "Plane Settings"),
-        new_plane_settings(&mut commands, &editor_settings),
+        new_plane_settings(&mut commands),
         plane_wireframe_checkbox(&mut commands, &editor_settings),
         empty_row(&mut commands, 40.0),
-        empty_row(&mut commands, 10.0),
         other_buttons(&mut commands),
         navmesh_config_buttons(&mut commands, &navconfig)
     ];
@@ -792,8 +791,7 @@ fn plane_wireframe_checkbox(
 
 
 fn new_plane_settings(
-    commands: &mut Commands,
-    editor_settings: &Res<EditorSettings>
+    commands: &mut Commands
 ) -> Entity {
 
     let local_root = commands.spawn((
@@ -810,24 +808,6 @@ fn new_plane_settings(
             plane_input_field(15.0, 3.0, 4.0, 10.0),
             (Text::new("Loc")),
             loc_input_field(15.0, 3.0, 4.0, 10.0),
-            (Text::new("Chunks")),
-            (
-                slider(
-                    SliderProps {
-                        max: 10.0,
-                        value: editor_settings.plane_save_chunks as f32,
-                        min: 0.0,
-                        ..default()
-                    },
-                    (SliderStep(1.0), SliderPrecision(0), PlaneControls, EditorControls),
-                ),
-                observe(slider_self_update),
-                observe(
-                    |value_change: On<ValueChange<f32>>, mut editor_settings: ResMut<EditorSettings>| {
-                        editor_settings.plane_save_chunks = value_change.value as u32;
-                    }
-                )
-            ),
             (
                 button(
                     ButtonProps::default(),(PlaneControls, EditorControls),

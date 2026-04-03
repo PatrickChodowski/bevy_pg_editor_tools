@@ -31,7 +31,6 @@ impl Plugin for PGEditorAssetsPanelPlugin {
             (
                 (
                     update_scroll_position, 
-                    // activate_input.run_if(input_just_pressed(KeyCode::Space))
                 ).chain().before(TextInputSystem),
                 update_assets_bar.after(TextInputSystem)
             ).run_if(in_state(GameStatePlay::Editor))
@@ -64,16 +63,6 @@ fn update_assets_bar(
     });
 
 }
-
-
-// // Emergency activate input if not active :)
-// fn activate_input(
-//     mut inactive: Single<&mut TextInputInactive, With<AssetSearch>>
-// ){
-//     if inactive.0 {
-//         inactive.0 = false;
-//     }
-// }
 
 
 #[derive(Component)]

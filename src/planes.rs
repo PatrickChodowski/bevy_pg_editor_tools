@@ -1,6 +1,9 @@
 
 use bevy::prelude::*;
 use bevy::pbr::wireframe::Wireframe;
+use bevy::mesh::{Indices, VertexAttributeValues};
+use bevy::asset::RenderAssetUsages;
+use bevy::render::render_resource::PrimitiveTopology;
 use bevy::color::palettes::css::{WHITE, BLACK};
 use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::mesh::SerializedMesh;
@@ -21,6 +24,7 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::{Activate, RadioButton, RadioGroup, 
     SliderStep, SliderValue, SliderPrecision, ValueChange, observe
 };
+use rand::Rng;
 
 use crate::tracker::{Changes, ChangePlaneDespawn, Change, ChangePlaneSpawn};
 use crate::prelude::{EditorMode, EditorSettings};
@@ -153,19 +157,166 @@ fn serialize_plane(
     }
 }
 
+
 fn chunk_plane(
     trigger:        On<ChunkPlane>,
     mut commands:   Commands,
-    planes:         Query<&PlaneToEdit>
+    planes:         Query<(&Mesh3d, &PlaneToEdit, Option<&Name>)>,
+    mut meshes:     ResMut<Assets<Mesh>>,
+    mut materials:  ResMut<Assets<StandardMaterial>>,
+
     // current_chunk:  Res<CurrentChunk>,
     // terrain_chunks: Query<(&TerrainChunk, &Name)>,
     // mapsdata:       Res<MapsData>
 ){
+    let Ok((plane_mesh, plane, maybe_name)) = planes.get(trigger.plane_entity) else {return};
 
-    if planes.contains(trigger.plane_entity){
-        info!("Chunking Plane: {}", trigger.plane_entity);
+    if maybe_name.is_none(){
+        warn!("Plane should have name before chunking!");
+        return;
     }
 
+    // count faces:
+    let side_edge_count = plane.subdivisions + 1;
+    let face_count: u32 = (plane.subdivisions + 1)*(plane.subdivisions + 1);
+    let cc = chunk_candidates(side_edge_count);
+    let n_chunks = cc.last().unwrap();
+    info!("Chunking Plane: {} face count: {} chunk options: {:?} final: {}", trigger.plane_entity, face_count, cc, n_chunks);
+
+    let chunk_width = plane.width/(*n_chunks as f32);
+    let chunk_height = plane.height/(*n_chunks as f32);
+
+    let s = (*n_chunks as f32).sqrt() as u32;
+    let chunk_edge_len = side_edge_count / s;
+
+    let Some(original_mesh) = meshes.get(&plane_mesh.0) else {return};
+    let Some(VertexAttributeValues::Float32x3(pos)) = original_mesh.attribute(Mesh::ATTRIBUTE_POSITION) else {return};
+    let Some(VertexAttributeValues::Float32x3(norm)) = original_mesh.attribute(Mesh::ATTRIBUTE_NORMAL) else {return};
+    let Some(VertexAttributeValues::Float32x2(uvs)) = original_mesh.attribute(Mesh::ATTRIBUTE_UV_0) else {return};
+    let maybe_colors = original_mesh.attribute(Mesh::ATTRIBUTE_COLOR);
+
+    let mut new_meshes = Vec::new();
+    for chunk_y in 0..s {
+        for chunk_x in 0..s {
+            let mut new_pos = Vec::new();
+            let mut new_norm = Vec::new();
+            let mut new_uvs = Vec::new();
+            let mut chunk_colors = Vec::new();
+
+            let start_v_x = chunk_x * chunk_edge_len;
+            let start_v_y = chunk_y * chunk_edge_len;
+
+            for y in 0..=chunk_edge_len {
+                for x in 0..=chunk_edge_len {
+                    let orig_idx = ((start_v_y + y) * (side_edge_count + 1) + (start_v_x + x)) as usize;
+                    let v_pos = Vec3::from(pos[orig_idx]);
+                    new_pos.push(v_pos);
+                    new_norm.push(norm[orig_idx]);
+                    new_uvs.push(uvs[orig_idx]);
+
+                    if let Some(VertexAttributeValues::Float32x4(original_colors)) = maybe_colors {
+                        chunk_colors.push(original_colors[orig_idx]);
+                    }
+
+                }
+            }
+
+            // --- Step 2: Calculate the center of this chunk ---
+            let min = new_pos.iter().fold(Vec3::splat(f32::MAX), |acc, v| acc.min(*v));
+            let max = new_pos.iter().fold(Vec3::splat(f32::MIN), |acc, v| acc.max(*v));
+            let chunk_center = (min + max) / 2.0;
+
+            // --- Step 3: Re-center vertices (Local Space) ---
+            let centered_pos: Vec<[f32; 3]> = new_pos.into_iter()
+                .map(|v| (v - chunk_center).to_array())
+                .collect();
+
+
+            // 4. Build Indices (Counter-Clockwise Winding)
+            let mut new_indices = Vec::new();
+            let v_per_side = chunk_edge_len + 1;
+
+            for y in 0..chunk_edge_len {
+                for x in 0..chunk_edge_len {
+                    // This is the index of the top-left vertex of the current quad
+                    let i = y * v_per_side + x;
+
+                    // To point the normal towards +Y (Up), we use CCW winding:
+                    // Triangle 1: Top-Left -> Bottom-Left -> Top-Right
+                    // Triangle 2: Top-Right -> Bottom-Left -> Bottom-Right
+                    new_indices.extend_from_slice(&[
+                        i,                  // Top-Left
+                        i + v_per_side,     // Bottom-Left
+                        i + 1,              // Top-Right
+                        
+                        i + 1,              // Top-Right
+                        i + v_per_side,     // Bottom-Left
+                        i + v_per_side + 1, // Bottom-Right
+                    ]);
+                }
+            }
+
+            let mut mesh = Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::default(),
+            );
+            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, centered_pos);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, new_norm);
+            mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, new_uvs);
+            if !chunk_colors.is_empty() {
+                mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, chunk_colors);
+            }
+
+            mesh.insert_indices(Indices::U32(new_indices));
+
+            new_meshes.push((mesh, chunk_center));
+
+        }
+    }
+    // let mut rng = rand::rng();
+
+    for (index, new_mesh_data) in new_meshes.iter().enumerate(){
+
+        // let debug_color = Color::srgb(
+        //     rng.random_range(0.0..1.0),
+        //     rng.random_range(0.0..1.0),
+        //     rng.random_range(0.0..1.0),
+        // );
+
+        commands.spawn(
+            (
+                Mesh3d(meshes.add(new_mesh_data.0.clone())),
+                // MeshMaterial3d(materials.add(StandardMaterial {
+                //     base_color: debug_color,
+                //     unlit: true, // Optional: makes it easier to see colors without lighting
+                //     ..default()
+                // })),
+                MeshMaterial3d(
+                    materials.add(StandardMaterial::from_color(Color::WHITE))
+                ),
+                Transform::from_translation(new_mesh_data.1),
+                Pickable{should_block_lower: true, ..default()},
+                PlaneToEdit{width: chunk_width, height: chunk_height, subdivisions: 0}, // TODO probably calculate subdivisions inside chunk
+                Name::from(format!("{}_{}", maybe_name.unwrap(), index))
+            )
+        );
+
+    }
+
+    commands.entity(trigger.plane_entity).despawn();
+
+}
+
+
+fn chunk_candidates(k: u32) -> Vec<u32> {
+    let mut results = Vec::new();
+    for s in 2..=k {
+        if k % s == 0 {
+            results.push(s.pow(2));
+        }
+    }
+    results.sort_unstable();
+    results
 }
 
 
@@ -246,7 +397,11 @@ struct ChunkButton {
     plane_entity: Entity
 }
 
-fn plane_buttons(plane_entity: &Entity, commands: &mut Commands, maybe_name: Option<&Name>) -> Entity {
+fn plane_buttons(
+    plane_entity: &Entity, 
+    commands: &mut Commands, 
+    maybe_name: Option<&Name>
+) -> Entity {
 
     let name_input = commands.spawn(
         (
