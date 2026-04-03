@@ -18,8 +18,9 @@ use crate::controller::TogglePlaneWireframe;
 use crate::prelude::{
     ToggleMarkersVis, ToggleSnapNav, EditorSettings, 
     ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, SaveScene, 
-    EditorMode, TriggerThumbnails, SpawnPlane, ToggleNavmeshDebug
+    EditorMode, TriggerThumbnails, ToggleNavmeshDebug
 };
+use crate::planes::SpawnPlane;
 use crate::text_inputs::{loc_input_field, plane_input_field};
 
 

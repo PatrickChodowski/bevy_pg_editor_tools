@@ -1,12 +1,17 @@
 
 use bevy::prelude::*;
-use bevy::color::palettes::css::WHITE;
+use bevy::pbr::wireframe::Wireframe;
+use bevy::color::palettes::css::{WHITE, BLACK};
 use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::mesh::SerializedMesh;
 use bevy::picking::pointer::PointerId;
 use bevy_pg_core::prelude::{GameStatePlay, PointerData};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
 use bevy_pg_scenes::prelude::PGSerializedMesh;
+use bevy_simple_text_input::{
+    TextInput, TextInputPlaceholder, TextInputSettings, TextInputTextFont, 
+    TextInputTextColor, TextInputInactive, TextInputValue, TextInputSystem, TextInputSubmitMessage
+};
 use bevy::feathers::controls::{
     ButtonProps, SliderProps, ButtonVariant, ColorSliderProps, ColorChannel, ColorSwatch,  
     button, checkbox, radio, slider, color_slider, color_swatch, ColorSlider, SliderBaseColor
@@ -17,8 +22,9 @@ use bevy::ui_widgets::{Activate, RadioButton, RadioGroup,
     SliderStep, SliderValue, SliderPrecision, ValueChange, observe
 };
 
-use crate::tracker::{Changes, ChangePlaneDespawn, Change};
-use crate::prelude::{EditorSettings, EditorMode};
+use crate::tracker::{Changes, ChangePlaneDespawn, Change, ChangePlaneSpawn};
+use crate::prelude::{EditorMode, EditorSettings};
+use crate::text_inputs::{LocInputX, LocInputY, LocInputZ, PlaneDimXInput, PlaneDimZInput, PlaneSubsInput, string_to_f32, string_to_u32};
 
 
 pub struct PGEditorPlanesPlugin;
@@ -32,9 +38,75 @@ impl Plugin for PGEditorPlanesPlugin {
         .add_observer(serialize_plane)
         .add_observer(chunk_plane)
         .add_observer(delete_plane)
+        .add_observer(spawn_plane)
+        .add_systems(Update, read_plane_name_on_submit.after(TextInputSystem).run_if(in_state(GameStatePlay::Editor).and(on_message::<TextInputSubmitMessage>)))
         ;
     }
 }
+
+
+fn read_plane_name_on_submit(
+    mut msgs:     MessageReader<TextInputSubmitMessage>,
+    mut commands: Commands,
+    forms:        Query<&PlaneNameInput>,
+    planes:       Query<Entity, With<PlaneToEdit>>
+){
+    for msg in msgs.read(){
+        if let Ok(plane_name_input) = forms.get(msg.entity){
+            if let Ok(plane_entity) = planes.get(plane_name_input.plane_entity){
+                commands.entity(plane_entity).insert(Name::from(msg.value.clone()));
+            }
+        } 
+    }
+}
+
+
+fn spawn_plane(
+    _trigger:          On<SpawnPlane>,
+    editor_settings:   Res<EditorSettings>, 
+    mut commands:      Commands,
+    mut meshes:        ResMut<Assets<Mesh>>,
+    mut materials:     ResMut<Assets<StandardMaterial>>,
+    loc_x:             Single<&TextInputValue, With<LocInputX>>,
+    loc_y:             Single<&TextInputValue, With<LocInputY>>,
+    loc_z:             Single<&TextInputValue, With<LocInputZ>>,
+    dim_x:             Single<&TextInputValue, With<PlaneDimXInput>>,
+    dim_z:             Single<&TextInputValue, With<PlaneDimZInput>>,
+    subs:              Single<&TextInputValue, With<PlaneSubsInput>>,
+    mut changes:       ResMut<Changes>,
+){
+
+    let Some(x) = string_to_f32(&loc_x.0) else {return;};
+    let Some(y) = string_to_f32(&loc_y.0) else {return;};
+    let Some(z) = string_to_f32(&loc_z.0) else {return;};
+    let Some(dim_x) = string_to_f32(&dim_x.0) else {return;};
+    let Some(dim_z) = string_to_f32(&dim_z.0) else {return;};
+    let Some(subs) = string_to_u32(&subs.0) else {return;};
+
+
+    let loc = Vec3::new(x, y, z);
+
+    let plane_entity = commands.spawn((
+        plane_mesh(dim_x, dim_z, subs, &mut meshes),
+        MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
+        Transform::from_translation(loc)
+    )).id();
+
+    if editor_settings.plane_wireframe {
+        commands.entity(plane_entity).insert(Wireframe);
+    }
+
+    let cps = ChangePlaneSpawn::new(
+        plane_entity, 
+        dim_x, 
+        dim_z, 
+        subs,
+        loc
+    );
+    cps.record(&mut changes);    
+}
+
+
 
 fn delete_plane(
     trigger:      On<DeletePlane>,
@@ -132,7 +204,6 @@ struct DeletePlane{
     plane_entity: Entity
 }
 
-
 #[derive(Event)]
 struct SerializePlane{
     plane_entity: Entity
@@ -145,6 +216,15 @@ struct ChunkPlane{
 
 #[derive(Event)]
 struct NavMeshGeneration{
+    plane_entity: Entity
+}
+
+#[derive(Event)]
+pub struct SpawnPlane;
+
+
+#[derive(Component)]
+struct PlaneNameInput {
     plane_entity: Entity
 }
 
@@ -166,8 +246,41 @@ struct ChunkButton {
     plane_entity: Entity
 }
 
-fn plane_buttons(plane_entity: &Entity, commands: &mut Commands) -> Entity {
-    commands.spawn(
+fn plane_buttons(plane_entity: &Entity, commands: &mut Commands, maybe_name: Option<&Name>) -> Entity {
+
+    let name_input = commands.spawn(
+        (
+            Node {
+                width: Val::Px(200.0),
+                border: UiRect::all(Val::Px(2.0)),
+                padding: UiRect::all(Val::Px(2.0)),
+                margin: UiRect::all(Val::Px(2.0)),
+                ..default()
+            },
+            BorderColor::all(Color::from(BLACK)),
+            BackgroundColor(WHITE.into()),
+            TextInput,
+            PlaneNameInput{plane_entity: *plane_entity},
+            TextInputPlaceholder{value: "".to_string(), ..default()},
+            TextInputTextFont(TextFont {
+                font_size: 17.0,
+                ..default()
+            }),
+            TextInputSettings{
+                retain_on_submit: true,
+                mask_character: None,
+                max_length: Some(20)
+            },
+            TextInputTextColor(TextColor(BLACK.into())),
+            TextInputInactive(true),
+        )
+    ).id();
+
+    if let Some(name) = maybe_name {
+        commands.entity(name_input).insert(TextInputValue(name.to_string()));
+    }
+
+    let local_root = commands.spawn(
     (
         Node {
             display: Display::Flex,
@@ -227,7 +340,10 @@ fn plane_buttons(plane_entity: &Entity, commands: &mut Commands) -> Entity {
                 })   
             )
         ]
-    )).id()
+    )).id();
+
+    commands.entity(local_root).add_child(name_input);
+    return local_root;
 }
 
 
@@ -296,12 +412,12 @@ fn popup_bundle(coords: Vec2, plane_entity: Entity) -> impl Bundle {
 fn open_planes_popup(
     trigger:      On<OpenPopup>,
     mut commands: Commands,
-    query:        Query<(Entity, &PlaneToEdit)>
+    query:        Query<(Entity, Option<&Name>, &PlaneToEdit)>
 ){
-    let Ok((plane_entity, _plane)) = query.get(trigger.entity) else {return};
+    let Ok((plane_entity, maybe_name, _plane)) = query.get(trigger.entity) else {return};
 
     let popup_entity = commands.spawn(popup_bundle(trigger.click_coords, plane_entity)).id();
-    let buttons = plane_buttons(&plane_entity, &mut commands);
+    let buttons = plane_buttons(&plane_entity, &mut commands, maybe_name);
 
      let mut child_entities: Vec<Entity> = Vec::new();
      child_entities.push(buttons);

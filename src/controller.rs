@@ -9,17 +9,15 @@ use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
 use bevy_pg_scenes::prelude::{CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
-use bevy_simple_text_input::TextInputValue;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use crate::assets_panel::EditorAssetPanel;
-use crate::text_inputs::{LocInputX, LocInputY, LocInputZ, PlaneDimXInput, PlaneDimZInput, PlaneSubsInput};
 use crate::tracker::{Change, ChangeDespawn, ChangePlaneSpawn, ChangeTransform, Changes, ChangesSet, CurrentTransformChanges, Redo, Undo};
 use crate::ghost::{EditorAsset, Ghost};
 use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoFocus, TransformGizmoMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
-use crate::planes::{PlaneToEdit, plane_mesh};
+use crate::planes::PlaneToEdit;
 use crate::settings::{EditorMode, EditorSettings};
 use crate::vertex::{DeselectAllVertices, HideVertices};
 
@@ -47,8 +45,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_editor_panel)
         .add_observer(toggle_assets_panel)
         .add_observer(change_editor_mode)
-
-        .add_observer(spawn_plane)
         ;
     }
 }
@@ -58,73 +54,6 @@ fn toggle_navmesh_debug(
     mut navconfig:  ResMut<NavConfig>
 ){
     navconfig.debug = trigger.value;
-}
-
-
-fn string_to_f32(s: &str) -> Option<f32> {
-    let trimmed = s.trim();
-    
-    if trimmed.is_empty() {
-        return Some(0.0);
-    }
-
-    trimmed.parse::<f32>().ok()
-}
-
-fn string_to_u32(s: &str) -> Option<u32> {
-    let trimmed = s.trim();
-    
-    if trimmed.is_empty() {
-        return Some(0);
-    }
-
-    trimmed.parse::<u32>().ok()
-}
-
-
-fn spawn_plane(
-    _trigger:          On<SpawnPlane>,
-    editor_settings:   Res<EditorSettings>, 
-    mut commands:      Commands,
-    mut meshes:        ResMut<Assets<Mesh>>,
-    mut materials:     ResMut<Assets<StandardMaterial>>,
-    loc_x:             Single<&TextInputValue, With<LocInputX>>,
-    loc_y:             Single<&TextInputValue, With<LocInputY>>,
-    loc_z:             Single<&TextInputValue, With<LocInputZ>>,
-    dim_x:             Single<&TextInputValue, With<PlaneDimXInput>>,
-    dim_z:             Single<&TextInputValue, With<PlaneDimZInput>>,
-    subs:              Single<&TextInputValue, With<PlaneSubsInput>>,
-    mut changes:       ResMut<Changes>,
-){
-
-    let Some(x) = string_to_f32(&loc_x.0) else {return;};
-    let Some(y) = string_to_f32(&loc_y.0) else {return;};
-    let Some(z) = string_to_f32(&loc_z.0) else {return;};
-    let Some(dim_x) = string_to_f32(&dim_x.0) else {return;};
-    let Some(dim_z) = string_to_f32(&dim_z.0) else {return;};
-    let Some(subs) = string_to_u32(&subs.0) else {return;};
-
-
-    let loc = Vec3::new(x, y, z);
-
-    let plane_entity = commands.spawn((
-        plane_mesh(dim_x, dim_z, subs, &mut meshes),
-        MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
-        Transform::from_translation(loc)
-    )).id();
-
-    if editor_settings.plane_wireframe {
-        commands.entity(plane_entity).insert(Wireframe);
-    }
-
-    let cps = ChangePlaneSpawn::new(
-        plane_entity, 
-        dim_x, 
-        dim_z, 
-        subs,
-        loc
-    );
-    cps.record(&mut changes);    
 }
 
 fn change_editor_mode(
@@ -252,17 +181,12 @@ fn toggle_plane_wireframe(
     }
 }
 
-
 fn on_fire_save_scene(
      _trigger: On<Fire<SaveScene>>,
      mut commands: Commands,
 ){
     commands.trigger(SaveScene);
 }
-
-
-
-
 
 fn save_scene(
     _trigger: On<SaveScene>,
@@ -355,7 +279,7 @@ pub fn editor_controller() -> impl Bundle {
                 (
                     Action::<ToggleAssetsPanel>::new(),
                     Press::default(),
-                    bindings![KeyCode::Tab]
+                    bindings![KeyCode::KeyC]
                 ),
                 (
                     Action::<SaveScene>::new(),
@@ -402,9 +326,6 @@ pub fn editor_controller() -> impl Bundle {
     );
 }
 
-#[derive(InputAction, Event)]
-#[action_output(bool)]
-pub struct SpawnPlane;
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]

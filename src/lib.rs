@@ -266,7 +266,7 @@ pub mod prelude {
         PGEditorControllerPlugin, editor_controller, EditorController, 
         TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
         ToggleSnapNav, 
-        ChangeEditorMode, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, SpawnPlane, ToggleNavmeshDebug
+        ChangeEditorMode, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, ToggleNavmeshDebug
     };
     pub use crate::ghost::{
         PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, 

@@ -389,3 +389,24 @@ fn switch_controllers_on_text_input_active(
         }
     }
 }
+
+
+pub(crate) fn string_to_f32(s: &str) -> Option<f32> {
+    let trimmed = s.trim();
+    
+    if trimmed.is_empty() {
+        return Some(0.0);
+    }
+
+    trimmed.parse::<f32>().ok()
+}
+
+pub(crate) fn string_to_u32(s: &str) -> Option<u32> {
+    let trimmed = s.trim();
+    
+    if trimmed.is_empty() {
+        return Some(0);
+    }
+
+    trimmed.parse::<u32>().ok()
+}
