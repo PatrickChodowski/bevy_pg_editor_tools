@@ -6,12 +6,13 @@ use bevy::picking::pointer::PointerId;
 use bevy::prelude::*;
 use bevy::prelude::Press;
 use std::f32::consts::FRAC_PI_2;
-use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB, PointerData};
+use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
 use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static};
 
 use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
 use crate::planes::PlaneToEdit;
 use crate::prelude::{EditorMode, EditorSettings};
+use crate::editor_pointer::EditorPointer;
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
 use crate::transform_gizmo::{TransformGizmoFocus, TransformGizmoState};
 
@@ -407,14 +408,12 @@ fn spawn_asset(
     ass:            Res<AssetServer>,
     mut meshes:     ResMut<Assets<Mesh>>,
     mut materials:  ResMut<Assets<StandardMaterial>>,
-    pointer:        Res<PointerData>,
+    pointer:        Res<EditorPointer>,
     mut changes:    ResMut<Changes>,
     ghost_settings: Res<EditorGhostSettings>
 ){
     let mut spawns = ChangesSet::new();
     for ev in event.read(){
-
-        // info!("[EDITOR] [GHOST] Spawning {:?}", ev.asset);
         let mut translation: Option<Vec3> = None;
         let rotation: Quat;
         let scale: Vec3;
@@ -422,7 +421,7 @@ fn spawn_asset(
         if let Some(ev_translation) = ev.translation {
             translation = Some(ev_translation);
         } else {
-            if let Some(world_pos) = pointer.center_screen_world_pos{
+            if let Some(world_pos) = pointer.center_screen_plane_pos{
                 translation = Some(world_pos);
             }
         }
@@ -443,14 +442,15 @@ fn spawn_asset(
         if let Some(ev_scale) = ev.scale {
             scale = ev_scale;
         } else {
-            match ev.asset {
-                EditorAsset::Marker(_) => {
-                    scale = Vec3::splat(1.0);
-                }
-                _ => {
-                    scale = Vec3::splat(10.0);
-                }
-            }
+            scale = Vec3::splat(1.0);
+            // match ev.asset {
+            //     EditorAsset::Marker(_) => {
+            //         scale = Vec3::splat(1.0);
+            //     }
+            //     _ => {
+            //         scale = Vec3::splat(1.0);
+            //     }
+            // }
         }
 
 

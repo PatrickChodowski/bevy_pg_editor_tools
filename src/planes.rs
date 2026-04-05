@@ -9,7 +9,7 @@ use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::mesh::SerializedMesh;
 use bevy::picking::pointer::PointerId;
 use bevy_pg_core::prelude::{GameStatePlay, PointerData};
-use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
+use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig, TerrainRayMeshData};
 use bevy_pg_scenes::prelude::PGSerializedMesh;
 use bevy_simple_text_input::{
     TextInput, TextInputPlaceholder, TextInputSettings, TextInputTextFont, 
@@ -24,7 +24,6 @@ use bevy::ui::Checked;
 use bevy::ui_widgets::{Activate, RadioButton, RadioGroup, 
     SliderStep, SliderValue, SliderPrecision, ValueChange, observe
 };
-use rand::Rng;
 
 use crate::tracker::{Changes, ChangePlaneDespawn, Change, ChangePlaneSpawn};
 use crate::prelude::{EditorMode, EditorSettings};
@@ -44,8 +43,34 @@ impl Plugin for PGEditorPlanesPlugin {
         .add_observer(delete_plane)
         .add_observer(spawn_plane)
         .add_systems(Update, read_plane_name_on_submit.after(TextInputSystem).run_if(in_state(GameStatePlay::Editor).and(on_message::<TextInputSubmitMessage>)))
+        .add_observer(on_add_plane)
+        .add_systems(Update, updated_plane)
         ;
     }
+}
+
+fn updated_plane(
+    mut query: Query<(&Mesh3d, &GlobalTransform, &mut TerrainRayMeshData), Or<(Changed<Transform>, Changed<Mesh3d>, Changed<PlaneToEdit>)>>,
+    meshes:    Res<Assets<Mesh>>
+){
+    for (plane_mesh, plane_transform, mut plane_trmd) in query.iter_mut(){
+        let Some(mesh) = meshes.get(&plane_mesh.0) else {continue};
+        let trmd = TerrainRayMeshData::from_mesh(mesh, &plane_transform.to_matrix());
+        *plane_trmd = trmd;
+    }
+}
+
+
+fn on_add_plane(
+    trigger: On<Add, PlaneToEdit>,
+    mut commands: Commands,
+    query: Query<(&Mesh3d, &GlobalTransform),  (With<PlaneToEdit>, Without<TerrainRayMeshData>)>,
+    meshes: Res<Assets<Mesh>>
+){
+    let Ok((plane_mesh, plane_transform)) = query.get(trigger.entity) else {return};
+    let Some(mesh) = meshes.get(&plane_mesh.0) else {return};
+    let trmd = TerrainRayMeshData::from_mesh(mesh, &plane_transform.to_matrix());
+    commands.entity(trigger.entity).insert(trmd);
 }
 
 
@@ -296,7 +321,7 @@ fn chunk_plane(
                 ),
                 Transform::from_translation(new_mesh_data.1),
                 Pickable{should_block_lower: true, ..default()},
-                PlaneToEdit{width: chunk_width, height: chunk_height, subdivisions: 0}, // TODO probably calculate subdivisions inside chunk
+                PlaneToEdit{width: chunk_width, height: chunk_height, subdivisions: 0, changes: 0}, // TODO probably calculate subdivisions inside chunk
                 Name::from(format!("{}_{}", maybe_name.unwrap(), index))
             )
         );
@@ -598,27 +623,16 @@ pub fn plane_mesh(
     (
         Mesh3d(meshes.add(Plane3d::default().mesh().size(width, height).subdivisions(subdivisions))),
         Pickable{should_block_lower: true, ..default()},
-        PlaneToEdit{width, height, subdivisions}
+        PlaneToEdit{width, height, subdivisions, changes: 0}
     )
 }
-
-
-pub fn split_into_chunks(
-    plane_mesh: &SerializedMesh, 
-    planetoedit: &PlaneToEdit, 
-    n_chunks: usize
-)-> Option<Vec<SerializedMesh>>{
-    return None;
-}
-
-
-
 
 #[derive(Component)]
 pub struct PlaneToEdit{
     pub width: f32,
     pub height: f32,
-    pub subdivisions: u32
+    pub subdivisions: u32,
+    pub changes: u32 
 }
 
 impl PlaneToEdit {
@@ -627,41 +641,13 @@ impl PlaneToEdit {
         PlaneToEdit {
             width: 0.0,
             height: 0.0,
-            subdivisions: 0
+            subdivisions: 0, 
+            changes: 0
         }
     }
     pub fn new(width: f32, height: f32, subdivisions: u32) -> Self {
         PlaneToEdit {
-            width, height, subdivisions
-        }
-    }
-    pub fn ray_intersection(
-        &self, 
-        loc: Vec3, 
-        scale: Vec3, 
-        origin: Vec3A, 
-        direction: Vec3A
-    ) -> Option<f32> {
-
-        let min_corner = Vec3A::new(loc.x - self.width*0.5*scale.x, loc.y, loc.z - self.height*0.5*scale.y);
-        let max_corner = Vec3A::new(loc.x + self.width*0.5*scale.x, loc.y, loc.z + self.height*0.5*scale.y);
-
-        let inv_dir = direction.recip();
-        
-        let t1 = (min_corner - origin) * inv_dir;
-        let t2 = (max_corner - origin) * inv_dir;
-        
-        let t_min = Vec3A::min(t1, t2);
-        let t_max = Vec3A::max(t1, t2);
-        
-        let t_enter = t_min.max_element();
-        let t_exit = t_max.min_element();
-        
-        let hit: bool = t_enter <= t_exit && t_exit >= 0.0;
-        if hit {
-            return Some(t_enter.max(0.0));
-        } else {
-            return None;
+            width, height, subdivisions, changes: 0
         }
     }
 
@@ -674,4 +660,3 @@ impl PlaneToEdit {
         max_radius * safe_fill
     }
 }
-

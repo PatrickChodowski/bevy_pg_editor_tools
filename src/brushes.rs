@@ -242,11 +242,13 @@ impl BrushType for ScatterBrush {
                 ResMut<Assets<StandardMaterial>>,
                 Res<AssetServer>,
                 Commands,
-                Query<&PGNavmesh>,
-                Res<EditorGhostSettings>
+                Res<EditorGhostSettings>,
+                Res<EditorPointer>
             )> = SystemState::new(world);
 
-        let (mut meshes, mut materials, ass, mut commands, navs, ghost_settings) = system_state.get_mut(world);
+        let (mut meshes, mut materials, ass, mut commands, ghost_settings, editor_pointer) = system_state.get_mut(world);
+
+        let Some(world_pos) = editor_pointer.loc else {return};
 
         for loc in locs.iter(){
             let uloc = (loc.x as u32, loc.y as u32);
@@ -275,15 +277,7 @@ impl BrushType for ScatterBrush {
             let nudge_x = rng.random_range(self.nudges.0..self.nudges.1)*self.radius_inner;
             let nudge_z = rng.random_range(self.nudges.0..self.nudges.1)*self.radius_inner;
 
-            let mut pos = Vec3::new(loc.x+nudge_x, loc.y, loc.y+nudge_z);
-
-            for navmesh in navs.iter(){
-                if let Some((_poly, world_pos)) = navmesh.has_point(&loc){
-                    pos.y = world_pos.y - 1.75;
-                    break;
-                }
-            }
-
+            let pos = Vec3::new(loc.x+nudge_x, world_pos.y, loc.y+nudge_z);
             let transform = Transform::from_translation(pos).with_rotation(q).with_scale(Vec3::splat(scale));
 
             let entity = commands.spawn(

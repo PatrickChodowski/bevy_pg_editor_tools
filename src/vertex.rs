@@ -248,7 +248,7 @@ pub struct DeselectAllVertices;
 fn vertex_changed(
     mut changed_vertices:   Query<(Entity, &PlaneVertex), Changed<PlaneVertex>>,
     added_vertices:         Query<Entity, Added<PlaneVertex>>,
-    plane_meshes:           Query<&Mesh3d, With<PlaneToEdit>>,
+    mut plane_meshes:       Query<(&Mesh3d, &mut PlaneToEdit)>,
     mut meshes:             ResMut<Assets<Mesh>>
 ){
     for (vertex_entity, plane_vertex) in changed_vertices.iter_mut(){
@@ -257,7 +257,7 @@ fn vertex_changed(
             continue;
         }
 
-        let Ok(plane_mesh_3d) = plane_meshes.get(plane_vertex.plane_entity) else {continue};
+        let Ok((plane_mesh_3d, mut plane)) = plane_meshes.get_mut(plane_vertex.plane_entity) else {continue};
         let Some(plane_mesh) = meshes.get_mut(&plane_mesh_3d.0) else {continue};
         let (mut v_pos, mut v_clr) = extract_mesh_data(plane_mesh);
         v_pos[plane_vertex.index] = plane_vertex.loc;
@@ -265,5 +265,6 @@ fn vertex_changed(
         plane_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, v_pos);
         plane_mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, v_clr);
         plane_mesh.compute_normals();
+        plane.changes += 1; // Trigger the TerrainRayMesh 
     }
 }
