@@ -680,6 +680,10 @@ impl PlaneToEdit {
         }
     }
 
+    pub fn dims(&self) -> Vec2 {
+        return Vec2::new(self.width, self.height);
+    }
+
     pub fn calculate_optimal_vertex_radius(&self, percentage: f32) -> f32 {
         let spacing_x = self.height / (self.subdivisions+1).max(1) as f32;
         let spacing_y = self.width / (self.subdivisions+1).max(1) as f32;

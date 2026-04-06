@@ -8,7 +8,6 @@ use std::f32::consts::FRAC_PI_2;
 use dyn_clone::DynClone;
 use rand::Rng;
 use rand::seq::IndexedRandom;
-use bevy_pg_nav::prelude::PGNavmesh;
 
 use crate::editor_pointer::EditorPointer;
 use crate::prelude::{EditorMode, EditorSettings};
@@ -89,7 +88,7 @@ fn start_brush(
         commands.entity(brush_entity).despawn();
     }
 
-    let Some(world_pos) = input_data.loc else {return};
+    let Some(world_pos) = input_data.plane_loc else {return};
     let loc = Vec3::new(world_pos.x, world_pos.y + 1.0, world_pos.z);
     let brush = Brush{
         loc, 
@@ -134,7 +133,7 @@ fn update_brush(
         return;
     }
 
-    let Some(world_pos) = input_data.loc else {return};
+    let Some(world_pos) = input_data.plane_loc else {return};
     if world_pos.xz() != brush.loc.xz(){
         brush.loc = Vec3::new(world_pos.x, world_pos.y + 0.1, world_pos.z);
         brush_transform.translation = brush.loc;
@@ -248,7 +247,7 @@ impl BrushType for ScatterBrush {
 
         let (mut meshes, mut materials, ass, mut commands, ghost_settings, editor_pointer) = system_state.get_mut(world);
 
-        let Some(world_pos) = editor_pointer.loc else {return};
+        let Some(world_pos) = editor_pointer.plane_loc else {return};
 
         for loc in locs.iter(){
             let uloc = (loc.x as u32, loc.y as u32);

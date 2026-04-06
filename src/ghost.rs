@@ -1,4 +1,3 @@
-use bevy::color::palettes::css::WHITE;
 use bevy::platform::collections::HashMap;
 use bevy::input::common_conditions::input_just_pressed;
 use bevy::picking::hover::HoverMap;
@@ -13,8 +12,6 @@ use std::f32::consts::FRAC_PI_2;
 use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
 use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static, SceneObjectData, SceneData, Markee};
 
-
-use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
 use crate::planes::PlaneToEdit;
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::editor_pointer::EditorPointer;
@@ -47,18 +44,18 @@ impl Plugin for PGEditorGhostPlugin {
             spawners_mapping: self.spawners_mapping
         })
         .add_message::<EditorSpawnAsset>()
-        .add_systems(OnExit(GameStatePlay::Editor), unghost_all)
+        .add_systems(OnExit(GameStatePlay::Editor), clear)
         .add_systems(OnEnter(GameStatePlay::Editor), init)
         .add_systems(Update, (
             spawn_asset.run_if(on_message::<EditorSpawnAsset>),
-            bs_select.run_if(box_select_changed),
             copy_ghost.run_if(input_just_pressed(MouseButton::Left))
         ).run_if(in_state(GameStatePlay::Editor)))
 
         .add_observer(toggle_ghost)
         .add_observer(add_ghost)
+        .add_observer(add_ghost_mark)
         .add_observer(remove_ghost)
-        .add_observer(ghost_bs_selected)
+        .add_observer(remove_ghostmark)
         .add_observer(add_editor_asset)
         .add_observer(save_scene)
 
@@ -67,74 +64,29 @@ impl Plugin for PGEditorGhostPlugin {
 }
 
 #[derive(Resource)]
-pub struct GhostMaterialRef {
-    handle: Handle<StandardMaterial>
+pub struct GhostMaterials {
+    handle: Handle<StandardMaterial>,
+    mark_handle: Handle<StandardMaterial>,
 }
 
-fn init(
-    mut commands: Commands,
-    mut materials:  ResMut<Assets<StandardMaterial>>
+const GHOST_COLOR: Srgba = Srgba { red: 0.565, green: 0.933, blue: 0.565, alpha: 0.65 };
+const GHOSTMARK_COLOR: Srgba = Srgba { red: 0.565, green: 0.733, blue: 0.565, alpha: 0.55 };
 
+fn init(
+    mut commands:   Commands,
+    mut materials:  ResMut<Assets<StandardMaterial>>
 ){
-    commands.insert_resource(GhostMaterialRef{
+    commands.insert_resource(GhostMaterials{
         handle: materials.add(
             StandardMaterial::from_color(GHOST_COLOR)
+        ),
+        mark_handle: materials.add(
+            StandardMaterial::from_color(GHOSTMARK_COLOR)
         )
     });
 }
 
-const GHOST_COLOR: Srgba = Srgba { red: 0.565, green: 0.933, blue: 0.565, alpha: 0.6 };
 
-fn bs_select(
-    mut commands: Commands,
-    // query:        Query<&BoxSelect>,
-    assets:       Query<(Entity, &Transform), With<EditorAsset>>,
-    mut gizmos:   Gizmos,
-    ghost_marks:  Query<Entity, With<GhostMark>>,
-){
-    for entity in ghost_marks.iter(){
-        commands.entity(entity).remove::<GhostMark>();
-    }
-
-    // let Ok(box_select) = query.single() else {return};
-    // let aabb = AABB::from_loc_dims(box_select.loc.xz(), box_select.dims);
-    //     for (entity, transform) in assets.iter(){
-    //         if aabb.has_point(transform.translation.xz()){
-    //             let iso = Isometry3d{
-    //                 translation: transform.translation.into(), 
-    //                 rotation: Quat::from_rotation_x(FRAC_PI_2)
-    //             };
-    //             gizmos.circle(iso, 5.0, Color::from(WHITE));
-    //             commands.entity(entity).insert(GhostMark);
-    //         }
-    // }  
-}
-
-
-fn ghost_bs_selected(
-    trigger:      On<BoxSelectFinal>,
-    mut commands: Commands,
-    assets:       Query<(Entity, &MeshMaterial3d<StandardMaterial>, &Transform), With<EditorAsset>>,
-    ghost_marks:  Query<Entity, With<GhostMark>>,
-    game_state:   Option<Res<State<GameStatePlay>>>
-){
-    if let Some(game_state) = game_state {
-        if *game_state != GameStatePlay::Editor {
-            return;
-        }
-    } else {
-        return;
-    }
-    
-    for entity in ghost_marks.iter(){
-        commands.entity(entity).remove::<GhostMark>();
-    }
-    for (entity, mat, transform) in assets.iter(){
-        if trigger.has_point(transform.translation.xz()){
-            commands.entity(entity).insert(Ghost{material_after: mat.0.clone()});
-        }
-    }
-}
 
 
 fn copy_ghost(
@@ -318,7 +270,7 @@ fn toggle_ghost(
     }
 }
 
-pub(super) fn unghost_all(
+pub(super) fn clear(
     mut commands: Commands,
     query:        Query<Entity, With<Ghost>>
 ){
@@ -327,31 +279,46 @@ pub(super) fn unghost_all(
         commands.entity(entity).try_remove::<TransformGizmoFocus>();
     }
 
-    commands.remove_resource::<GhostMaterialRef>();
+    commands.remove_resource::<GhostMaterials>();
 }
 
 fn add_ghost(
     trigger:        On<Add, Ghost>,
-    mut commands:   Commands,
-    ghost_mat:      Res<GhostMaterialRef>
+    mut query:      Query<&mut MeshMaterial3d<StandardMaterial>, With<Ghost>>,
+    ghost_mat:      Res<GhostMaterials>
 ){
-    commands.entity(trigger.entity).insert(
-        MeshMaterial3d(ghost_mat.handle.clone())
-    );    
+    if let Ok(mut material) = query.get_mut(trigger.entity){
+        material.0 = ghost_mat.handle.clone();
+    }  
+}
+
+fn add_ghost_mark(
+    trigger:        On<Add, GhostMark>,
+    mut query:      Query<&mut MeshMaterial3d<StandardMaterial>, With<GhostMark>>,
+    ghost_mat:      Res<GhostMaterials>
+){
+    if let Ok(mut material) = query.get_mut(trigger.entity){
+        material.0 = ghost_mat.mark_handle.clone();
+    }  
+}
+
+fn remove_ghostmark(
+    trigger:      On<Remove, GhostMark>,
+    mut query:    Query<(&mut MeshMaterial3d<StandardMaterial>, &GhostMark)>,
+){
+    if let Ok((mut material, ghostmark)) = query.get_mut(trigger.entity){
+        material.0 = ghostmark.material_after.clone();
+    }
 }
 
 fn remove_ghost(
     trigger:      On<Remove, Ghost>,
-    query:        Query<(Entity, &Ghost)>,
-    mut commands: Commands
+    mut query:    Query<(&mut MeshMaterial3d<StandardMaterial>, &Ghost)>,
 ){
-    if let Ok((entity, ghost)) = query.get(trigger.entity){
-        // Try as it might be being despawned in the same time
-        commands.entity(entity).try_insert(MeshMaterial3d(ghost.material_after.clone())); 
+    if let Ok((mut material, ghost)) = query.get_mut(trigger.entity){
+        material.0 = ghost.material_after.clone();
     }
 }
-
-
 
 #[derive(Resource, Debug)]
 pub struct EditorGhostTransformMemory{
@@ -405,7 +372,9 @@ pub struct Ghost {
 
 #[derive(Component)]
 #[component(storage = "SparseSet")]
-pub struct GhostMark;
+pub struct GhostMark {
+    pub(super) material_after: Handle<StandardMaterial>
+}
 
 
 fn spawn_asset(
