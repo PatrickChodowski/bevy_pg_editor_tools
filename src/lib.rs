@@ -264,7 +264,7 @@ pub mod prelude {
     };
     pub use crate::controller::{
         PGEditorControllerPlugin, editor_controller, EditorController, 
-        TurnOnEditor, TurnOffEditor, SaveScene, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
+        TurnOnEditor, TurnOffEditor, ChangeBrush, ToggleMarkersVis, ToggleSpawnersVis, 
         ToggleSnapNav, 
         ChangeEditorMode, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel, ToggleNavmeshDebug
     };

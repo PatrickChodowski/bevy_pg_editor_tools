@@ -1,19 +1,14 @@
 use bevy::pbr::wireframe::Wireframe;
 use bevy::prelude::*;
-use bevy::mesh::SerializedMesh;
-use bevy::tasks::IoTaskPool;
-use bevy::platform::collections::HashMap;
 use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
-use bevy_pg_scenes::prelude::{CurrentChunk, MapsData, SceneData, SceneObjectData, Markee, Spawner, Marker, Static, PGSerializedMesh};
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use bevy_pg_scenes::prelude::{Spawner, Marker};
 
 use crate::assets_panel::EditorAssetPanel;
-use crate::tracker::{Change, ChangeDespawn, ChangePlaneSpawn, ChangeTransform, Changes, ChangesSet, CurrentTransformChanges, Redo, Undo};
+use crate::tracker::{Change, ChangeDespawn, Changes, ChangesSet, Redo, Undo};
 use crate::ghost::{EditorAsset, Ghost};
 use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoFocus, TransformGizmoMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
@@ -32,8 +27,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(set_scale_mode)
         .add_observer(unghost_all)
         .add_observer(on_fire_unghost_all)
-        .add_observer(on_fire_save_scene)
-        .add_observer(save_scene)
         .add_observer(delete_object)
         .add_observer(toggle_navmesh_debug)
         .add_observer(toggle_markers_vis)
@@ -181,76 +174,6 @@ fn toggle_plane_wireframe(
     }
 }
 
-fn on_fire_save_scene(
-     _trigger: On<Fire<SaveScene>>,
-     mut commands: Commands,
-){
-    commands.trigger(SaveScene);
-}
-
-fn save_scene(
-    _trigger: On<SaveScene>,
-    current_chunk: Res<CurrentChunk>,
-    objects: Query<
-        (
-            &Transform,
-            &Name,
-            Option<&Markee>,
-            Option<&Spawner>,
-            Option<&Marker>,
-        ),
-        Or<(With<Static>, With<Ghost>, With<EditorAsset>)>,
-    >, // All of it Just in case :)
-) {
-    info!(
-        "[EDITOR] save scene for {:?} {:?}",
-        current_chunk.chunk_id, current_chunk.map_name
-    );
-
-    let mut sods: HashMap<Name, Vec<SceneObjectData>> = HashMap::new();
-    for (transform, name, maybe_markee, maybe_spawner, _maybe_marker) in objects.iter() {
-        if maybe_markee.is_some() {
-            continue;
-        }
-        let mut data: Option<HashMap<String,String>> = None;
-        if let Some(spawner) = maybe_spawner {
-            data = Some(spawner.data.clone());
-        }
-        // if let Some(marker) = maybe_marker {
-        //     match marker.typ {
-        //         _ => {}
-        //     }
-        // }
-
-        let sod = SceneObjectData {
-            location: transform.translation,
-            rotation: transform.rotation.to_euler(EulerRot::XYZ).into(),
-            scale: transform.scale,
-            data,
-        };
-        sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
-    }
-    let filename = format!(
-        "./assets/maps/{}_{}.scene.json",
-        current_chunk.map_name, current_chunk.chunk_id
-    );
-
-    info!("[EDITOR] Saving to file {}", filename);
-    let sd = SceneData {
-        map_name: current_chunk.map_name.clone(),
-        chunk_id: current_chunk.chunk_id.clone(),
-        objects: sods,
-    };
-
-    IoTaskPool::get()
-        .spawn(async move {
-            let f = File::create(&filename).ok().unwrap();
-            let mut writer = BufWriter::new(f);
-            let _res = serde_json::to_writer_pretty(&mut writer, &sd);
-            let _res = writer.flush();
-        })
-        .detach();
-}
 
 
 #[derive(Component, Reflect)]
@@ -280,11 +203,6 @@ pub fn editor_controller() -> impl Bundle {
                     Action::<ToggleAssetsPanel>::new(),
                     Press::default(),
                     bindings![KeyCode::KeyC]
-                ),
-                (
-                    Action::<SaveScene>::new(),
-                    Press::default(),
-                    bindings![KeyCode::Enter]
                 ),
                 (
                     Action::<SetYAxisOrigin>::new(),
@@ -330,12 +248,6 @@ pub fn editor_controller() -> impl Bundle {
 #[derive(InputAction, Event)]
 #[action_output(bool)]
 pub struct TriggerThumbnails;
-
-
-#[derive(InputAction, Event)]
-#[action_output(bool)]
-pub struct SaveScene;
-
 
 #[derive(InputAction, Event)]
 #[action_output(bool)]

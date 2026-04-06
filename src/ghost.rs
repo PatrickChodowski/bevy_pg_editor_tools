@@ -5,9 +5,14 @@ use bevy::picking::hover::HoverMap;
 use bevy::picking::pointer::PointerId;
 use bevy::prelude::*;
 use bevy::prelude::Press;
+use bevy::tasks::IoTaskPool;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+
 use std::f32::consts::FRAC_PI_2;
 use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
-use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static};
+use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static, SceneObjectData, SceneData, Markee};
+
 
 use crate::box_select::{BoxSelect, BoxSelectFinal, box_select_changed};
 use crate::planes::PlaneToEdit;
@@ -55,6 +60,7 @@ impl Plugin for PGEditorGhostPlugin {
         .add_observer(remove_ghost)
         .add_observer(ghost_bs_selected)
         .add_observer(add_editor_asset)
+        .add_observer(save_scene)
 
         ;
     }
@@ -488,9 +494,90 @@ fn spawn_asset(
     if spawns.len() > 0 {
         spawns.record(&mut changes);
     }
-
-
 }
+
+
+
+#[derive(Event)]
+pub struct SaveScene {
+    pub plane_entity: Entity
+}
+
+
+fn save_scene(
+    trigger: On<SaveScene>,
+    planes:  Query<(&PlaneToEdit, &Transform, Option<&Name>)>,
+    objects: Query<
+        (
+            &Transform,
+            &Name,
+            Option<&Markee>,
+            Option<&Spawner>,
+            Option<&Marker>,
+        ),
+        Or<(With<Static>, With<Ghost>, With<EditorAsset>)>,
+    >, // All of it Just in case :)
+) {
+    let Ok((plane, plane_transform, maybe_name)) = planes.get(trigger.plane_entity) else {return};
+    let Some(name) = maybe_name else {warn!("Plane should have a name before serializing scene. Abort"); return};
+
+    info!(
+        "[EDITOR] save scene for plane {}", trigger.plane_entity
+    );
+
+
+    let plane_aabb = AABB::from_loc_dims(plane_transform.translation.xz(), Vec2::new(plane.width, plane.height));
+
+    let mut sods: HashMap<Name, Vec<SceneObjectData>> = HashMap::new();
+
+    for (transform, name, maybe_markee, maybe_spawner, _maybe_marker) in objects.iter() {
+        if maybe_markee.is_some() {
+            continue;
+        }
+
+        // Add only objects belonging to the plane
+        if !plane_aabb.has_point(transform.translation.xz()){
+            continue;
+        }
+
+
+        let mut data: Option<HashMap<String,String>> = None;
+        if let Some(spawner) = maybe_spawner {
+            data = Some(spawner.data.clone());
+        }
+        // if let Some(marker) = maybe_marker {
+        //     match marker.typ {
+        //         _ => {}
+        //     }
+        // }
+
+        let sod = SceneObjectData {
+            location: transform.translation,
+            rotation: transform.rotation.to_euler(EulerRot::XYZ).into(),
+            scale: transform.scale,
+            data,
+        };
+        sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
+    }
+    let filename = format!("./assets/scenes/{}.scene.json",name);
+
+    info!("[EDITOR] Saving to file {}", filename);
+    let sd = SceneData {
+        map_name: name.to_string(),
+        chunk_id: name.to_string(),
+        objects: sods
+    };
+
+    IoTaskPool::get()
+        .spawn(async move {
+            let f = File::create(&filename).ok().unwrap();
+            let mut writer = BufWriter::new(f);
+            let _res = serde_json::to_writer_pretty(&mut writer, &sd);
+            let _res = writer.flush();
+        })
+        .detach();
+}
+
 
 #[derive(Component, Clone, Debug)]
 pub enum EditorAsset {

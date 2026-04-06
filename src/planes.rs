@@ -25,6 +25,7 @@ use bevy::ui_widgets::{Activate, RadioButton, RadioGroup,
     SliderStep, SliderValue, SliderPrecision, ValueChange, observe
 };
 
+use crate::ghost::SaveScene;
 use crate::tracker::{Changes, ChangePlaneDespawn, Change, ChangePlaneSpawn};
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::text_inputs::{LocInputX, LocInputY, LocInputZ, PlaneDimXInput, PlaneDimZInput, PlaneSubsInput, string_to_f32, string_to_u32};
@@ -418,6 +419,11 @@ struct SerializeButton {
     plane_entity: Entity
 }
 #[derive(Component)]
+struct SaveSceneButton {
+    plane_entity: Entity
+}
+
+#[derive(Component)]
 struct ChunkButton {
     plane_entity: Entity
 }
@@ -510,6 +516,18 @@ fn plane_buttons(
             (
                 button(
                     ButtonProps::default(),
+                    SaveSceneButton{plane_entity: *plane_entity},
+                    Spawn((Text::new("Save Scene"), ThemedText))
+                ),
+                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&SaveSceneButton>| {
+                    if let Ok(btn) = sbuttons.get(_activate.entity){
+                        commands.trigger(SaveScene{plane_entity: btn.plane_entity});
+                    }
+                })   
+            ),
+            (
+                button(
+                    ButtonProps::default(),
                     (DeletePlaneButton{plane_entity: *plane_entity}),
                     Spawn((Text::new("Delete"), ThemedText))
                 ),
@@ -573,7 +591,7 @@ fn popup_bundle(coords: Vec2, plane_entity: Entity) -> impl Bundle {
             left: px(coords.x),
             top: px(coords.y),
             width: px(300.0),
-            height: px(150.0),
+            height: px(200.0),
             border: UiRect::all(px(2.5)),
             flex_direction: FlexDirection::Column,
             justify_content: JustifyContent::Start,
