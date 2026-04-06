@@ -25,7 +25,7 @@ use bevy::ui_widgets::{Activate, RadioButton, RadioGroup,
     SliderStep, SliderValue, SliderPrecision, ValueChange, observe
 };
 
-use crate::ghost::SaveScene;
+use crate::ghost::{Ghost, SaveScene};
 use crate::tracker::{Changes, ChangePlaneDespawn, Change, ChangePlaneSpawn};
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::text_inputs::{LocInputX, LocInputY, LocInputZ, PlaneDimXInput, PlaneDimZInput, PlaneSubsInput, string_to_f32, string_to_u32};
@@ -483,9 +483,16 @@ fn plane_buttons(
                     NavGenButton{plane_entity: *plane_entity},
                     Spawn((Text::new("Navmesh Generation"), ThemedText))
                 ),
-                observe(|_activate: On<Activate>, mut commands: Commands, navgenbuttons: Query<&NavGenButton>| {
-                    if let Ok(ngb) = navgenbuttons.get(_activate.entity){
-                        commands.trigger(NavMeshGeneration{plane_entity: ngb.plane_entity});
+                observe(|_activate: On<Activate>, mut commands: Commands, navgenbuttons: Query<&NavGenButton>, settings: Res<EditorSettings>, ghost_planes: Query<Entity, (With<PlaneToEdit>, With<Ghost>)>| {
+                    if settings.plane_apply_to_all {
+                        info!("Applying Navmesh Generation to All Ghost Planes");
+                        for entity in ghost_planes.iter(){
+                            commands.trigger(NavMeshGeneration{plane_entity: entity});
+                        }
+                    } else {
+                        if let Ok(ngb) = navgenbuttons.get(_activate.entity){
+                            commands.trigger(NavMeshGeneration{plane_entity: ngb.plane_entity});
+                        }
                     }
                 })       
             ),
@@ -507,9 +514,16 @@ fn plane_buttons(
                     SerializeButton{plane_entity: *plane_entity},
                     Spawn((Text::new("Serialize"), ThemedText))
                 ),
-                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&SerializeButton>| {
-                    if let Ok(btn) = sbuttons.get(_activate.entity){
-                        commands.trigger(SerializePlane{plane_entity: btn.plane_entity});
+                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&SerializeButton>, settings: Res<EditorSettings>, ghost_planes: Query<Entity, (With<PlaneToEdit>, With<Ghost>)>| {
+                    if settings.plane_apply_to_all {
+                        info!("Applying Serialize to All Ghost Planes");
+                        for entity in ghost_planes.iter(){
+                            commands.trigger(SerializePlane{plane_entity: entity});
+                        }
+                    } else {
+                        if let Ok(btn) = sbuttons.get(_activate.entity){
+                            commands.trigger(SerializePlane{plane_entity: btn.plane_entity});
+                        }
                     }
                 })   
             ),
@@ -519,9 +533,16 @@ fn plane_buttons(
                     SaveSceneButton{plane_entity: *plane_entity},
                     Spawn((Text::new("Save Scene"), ThemedText))
                 ),
-                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&SaveSceneButton>| {
-                    if let Ok(btn) = sbuttons.get(_activate.entity){
-                        commands.trigger(SaveScene{plane_entity: btn.plane_entity});
+                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&SaveSceneButton>, settings: Res<EditorSettings>, ghost_planes: Query<Entity, (With<PlaneToEdit>, With<Ghost>)> | {
+                    if settings.plane_apply_to_all {
+                        info!("Applying SaveScene to All Ghost Planes");
+                        for entity in ghost_planes.iter(){
+                            commands.trigger(SaveScene{plane_entity: entity});
+                        }
+                    } else {
+                        if let Ok(btn) = sbuttons.get(_activate.entity){
+                            commands.trigger(SaveScene{plane_entity: btn.plane_entity});
+                        }
                     }
                 })   
             ),
@@ -531,9 +552,16 @@ fn plane_buttons(
                     (DeletePlaneButton{plane_entity: *plane_entity}),
                     Spawn((Text::new("Delete"), ThemedText))
                 ),
-                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&DeletePlaneButton>| {
-                    if let Ok(btn) = sbuttons.get(_activate.entity){
-                        commands.trigger(DeletePlane{plane_entity: btn.plane_entity});
+                observe(|_activate: On<Activate>, mut commands: Commands, sbuttons: Query<&DeletePlaneButton>, settings: Res<EditorSettings>, ghost_planes: Query<Entity, (With<PlaneToEdit>, With<Ghost>)> | {
+                    if settings.plane_apply_to_all {
+                        info!("Applying Delete to All Ghost Planes");
+                        for entity in ghost_planes.iter(){
+                            commands.trigger(DeletePlane{plane_entity: entity});
+                        }
+                    } else {
+                        if let Ok(btn) = sbuttons.get(_activate.entity){
+                            commands.trigger(DeletePlane{plane_entity: btn.plane_entity});
+                        }
                     }
                 })   
             )

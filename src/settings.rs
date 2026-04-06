@@ -15,7 +15,8 @@ pub struct EditorSettings {
     pub brush_id: usize,
     pub brush_radius: f32,
     pub brush_typ: Box<dyn BrushType>,
-    pub plane_wireframe: bool
+    pub plane_wireframe: bool,
+    pub plane_apply_to_all: bool
 }
 impl EditorSettings {
     pub fn new(
@@ -27,13 +28,14 @@ impl EditorSettings {
             snap_nav: true,
             show_spawners: false,
             show_markers: false,
-            mode: EditorMode::Scene,
+            mode: EditorMode::Plane,
             brush_mapping,
             brush_id_labels,
             brush_id: 0,
             brush_radius: 10.0,
             brush_typ: Box::new(NothingBrush),
-            plane_wireframe: false
+            plane_wireframe: false,
+            plane_apply_to_all: false
         }
     }
 }

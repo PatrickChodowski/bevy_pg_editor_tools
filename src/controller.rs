@@ -33,6 +33,7 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(toggle_spawners_vis)
         .add_observer(toggle_nav_snap)
         .add_observer(toggle_plane_wireframe)
+        .add_observer(toggle_plane_apply_to_all)
         .add_observer(change_brush)
         .add_observer(turn_off_editor)
         .add_observer(toggle_editor_panel)
@@ -175,6 +176,13 @@ fn toggle_plane_wireframe(
 }
 
 
+fn toggle_plane_apply_to_all(
+    trigger: On<TogglePlaneApplyToAll>,
+    mut editor_settings: ResMut<EditorSettings>
+){
+    editor_settings.plane_apply_to_all = trigger.value;
+}
+
 
 #[derive(Component, Reflect)]
 pub struct EditorController;
@@ -261,15 +269,17 @@ pub struct ToggleSpawnersVis {
     pub visible: bool
 }
 
-#[derive(InputAction, Event)]
-#[action_output(bool)]
+#[derive(Event)]
 pub struct TogglePlaneWireframe {
     pub visible: bool
 }
 
+#[derive(Event)]
+pub struct TogglePlaneApplyToAll {
+    pub value: bool
+}
 
-#[derive(InputAction, Event)]
-#[action_output(bool)]
+#[derive(Event)]
 pub struct ChangeBrush{
     pub value: usize
 }

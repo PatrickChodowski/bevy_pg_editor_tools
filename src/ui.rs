@@ -14,7 +14,7 @@ use bevy::feathers::dark_theme::create_dark_theme;
 use bevy_pg_core::prelude::GameStatePlay;
 use bevy_pg_nav::prelude::NavConfig;
 
-use crate::controller::TogglePlaneWireframe;
+use crate::controller::{TogglePlaneWireframe, TogglePlaneApplyToAll};
 use crate::prelude::{
     ToggleMarkersVis, ToggleSnapNav, EditorSettings, 
     ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, 
@@ -107,6 +107,7 @@ fn init_editor_ui(
         label_section(&mut commands, "Plane Settings"),
         new_plane_settings(&mut commands),
         plane_wireframe_checkbox(&mut commands, &editor_settings),
+        plane_apply_to_all_checkbox(&mut commands, &editor_settings),
         empty_row(&mut commands, 40.0),
         other_buttons(&mut commands),
         navmesh_config_buttons(&mut commands, &navconfig)
@@ -773,6 +774,53 @@ fn plane_wireframe_checkbox(
         observe(
             |change: On<ValueChange<bool>>, mut commands: Commands| {
                 commands.trigger(TogglePlaneWireframe{visible: change.value});
+                let mut checkbox = commands.entity(change.source);
+                if change.value {
+                    checkbox.insert(Checked);
+                } else {
+                    checkbox.remove::<Checked>();
+                }
+            }
+        )   
+    );
+
+
+    commands.entity(local_root).add_children(&vec![entity1]);
+    return local_root;
+
+}
+
+
+
+
+fn plane_apply_to_all_checkbox(
+    commands: &mut Commands,
+    editor_settings: &Res<EditorSettings>
+) -> Entity {
+
+    let local_root = commands.spawn(
+        (
+            Node {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Start,
+                column_gap: px(8),
+                ..default()
+            },
+            PlaneControls
+        )
+    ).id();
+
+    let entity1: Entity = if editor_settings.plane_wireframe {
+        commands.spawn(checkbox((Checked, PlaneControls, EditorControls), Spawn((Text::new("Apply To All"), ThemedText)))).id()
+    } else {
+        commands.spawn(checkbox((PlaneControls, EditorControls), Spawn((Text::new("Apply To All"), ThemedText)))).id()
+    };
+    commands.entity(entity1).insert(
+        observe(
+            |change: On<ValueChange<bool>>, mut commands: Commands| {
+                commands.trigger(TogglePlaneApplyToAll{value: change.value});
                 let mut checkbox = commands.entity(change.source);
                 if change.value {
                     checkbox.insert(Checked);
