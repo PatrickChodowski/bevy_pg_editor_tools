@@ -551,11 +551,16 @@ fn on_click_plane(
     query:        Query<Entity, With<PlaneToEdit>>,
     pointer:      Res<PointerData>,
     popups:       Query<Entity, With<PlanesPopup>>,
-    editor_settings: Res<EditorSettings>
+    editor_settings: Res<EditorSettings>,
+    keys:         Res<ButtonInput<KeyCode>>
 ){
 
 
     if editor_settings.mode != EditorMode::Plane{
+        return;
+    }
+
+    if keys.pressed(KeyCode::KeyB) || keys.just_pressed(KeyCode::KeyB){
         return;
     }
 
@@ -572,6 +577,12 @@ fn on_click_plane(
                         click_coords: pointer.cursor_pos.unwrap()
                     })
             } else {};
+        } else {
+            if trigger.button == PointerButton::Secondary {
+                for popup_entity in popups.iter(){
+                    commands.entity(popup_entity).try_despawn();
+                }
+            } 
         }
     }
 }

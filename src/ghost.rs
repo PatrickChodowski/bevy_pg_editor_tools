@@ -87,7 +87,7 @@ const GHOST_COLOR: Srgba = Srgba { red: 0.565, green: 0.933, blue: 0.565, alpha:
 
 fn bs_select(
     mut commands: Commands,
-    query:        Query<&BoxSelect>,
+    // query:        Query<&BoxSelect>,
     assets:       Query<(Entity, &Transform), With<EditorAsset>>,
     mut gizmos:   Gizmos,
     ghost_marks:  Query<Entity, With<GhostMark>>,
@@ -96,18 +96,18 @@ fn bs_select(
         commands.entity(entity).remove::<GhostMark>();
     }
 
-    let Ok(box_select) = query.single() else {return};
-    let aabb = AABB::from_loc_dims(box_select.loc.xz(), box_select.dims);
-        for (entity, transform) in assets.iter(){
-            if aabb.has_point(transform.translation.xz()){
-                let iso = Isometry3d{
-                    translation: transform.translation.into(), 
-                    rotation: Quat::from_rotation_x(FRAC_PI_2)
-                };
-                gizmos.circle(iso, 5.0, Color::from(WHITE));
-                commands.entity(entity).insert(GhostMark);
-            }
-    }  
+    // let Ok(box_select) = query.single() else {return};
+    // let aabb = AABB::from_loc_dims(box_select.loc.xz(), box_select.dims);
+    //     for (entity, transform) in assets.iter(){
+    //         if aabb.has_point(transform.translation.xz()){
+    //             let iso = Isometry3d{
+    //                 translation: transform.translation.into(), 
+    //                 rotation: Quat::from_rotation_x(FRAC_PI_2)
+    //             };
+    //             gizmos.circle(iso, 5.0, Color::from(WHITE));
+    //             commands.entity(entity).insert(GhostMark);
+    //         }
+    // }  
 }
 
 

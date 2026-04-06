@@ -1,12 +1,7 @@
-use bevy::light::{NotShadowCaster, NotShadowReceiver};
-use bevy::ecs::spawn::SpawnWith;
-use bevy::prelude::*;
-use bevy_enhanced_input::prelude::Cancel;
-use bevy_enhanced_input::prelude::*;
-use bevy_pg_core::prelude::PointerData;
-use bevy::color::palettes::tailwind::*;
+use bevy::{color::palettes::tailwind::{BLUE_400, ORANGE_700}, prelude::*};
 use libm::fabsf;
 
+use crate::editor_pointer::EditorPointer;
 
 
 pub struct PGEditorBoxSelectPlugin;
@@ -14,55 +9,93 @@ pub struct PGEditorBoxSelectPlugin;
 impl Plugin for PGEditorBoxSelectPlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_input_context::<BoxSelectController>()
-        .add_observer(start_boxselect)
-        .add_observer(update_boxselect)
-        .add_observer(end_cancel_boxselect)    
-        .add_observer(end_boxselect)             
-        ;
+        .insert_resource(BoxSelect::default())
+        .init_gizmo_group::<BoxSelectGizmos>()
+        .add_systems(Startup, setup_gizmo_config)
+        .add_systems(Update,
+            (
+                update_boxselect,
+                display_boxselect
+            ).chain()
+        );
+    }
+}
+
+#[derive(Default, Reflect, GizmoConfigGroup)]
+struct BoxSelectGizmos;
+
+fn setup_gizmo_config(
+    mut config_store: ResMut<GizmoConfigStore>
+){
+    let (config, _) = config_store.config_mut::<BoxSelectGizmos>();
+    config.depth_bias = -1.0;  
+}
+
+fn update_boxselect(
+    editor_pointer:  Res<EditorPointer>,
+    mut box_select:  ResMut<BoxSelect>,
+    mouse:           Res<ButtonInput<MouseButton>>,
+    keys:            Res<ButtonInput<KeyCode>>,
+){
+    
+    // Start drag
+    if mouse.just_pressed(MouseButton::Middle) && keys.pressed(KeyCode::KeyB) && !box_select.active {
+        let Some(world_pos) = editor_pointer.loc else {return};
+        box_select.active = true;
+        box_select.start = world_pos;
+        box_select.loc = world_pos;
+        box_select.dims  = Vec2::ZERO;
+        return;
+    }
+
+    // Dragging
+    if box_select.active && mouse.pressed(MouseButton::Middle) && keys.pressed(KeyCode::KeyB) {
+        let Some(world_pos) = editor_pointer.loc else {return};
+        let dim_x = fabsf(world_pos.x - box_select.start.x);
+        let dim_z = fabsf(world_pos.z - box_select.start.z);
+        let dims = Vec2::new(dim_x, dim_z);
+        box_select.loc = world_pos;
+        box_select.dims = dims; 
+        return;
+    }
+
+    // End drag
+    if box_select.active && (mouse.just_released(MouseButton::Middle) || keys.just_released(KeyCode::KeyB)) {
+        // let Some(world_pos) = editor_pointer.loc else {return};
+
+        *box_select = BoxSelect::default();
+        return;
     }
 }
 
 
-#[derive(Component, Reflect)]
-pub struct BoxSelectController;
+fn display_boxselect(
+    box_select:  Res<BoxSelect>,
+    mut gizmos:  Gizmos<BoxSelectGizmos>
+){
+    if !box_select.active {
+        return;
+    }
 
-pub fn box_select_controller() -> impl Bundle {
-    return (
-        BoxSelectController,
-        ContextPriority::<BoxSelectController>::new(2),
-        Actions::<BoxSelectController>::spawn(
-            SpawnWith(|context: &mut ActionSpawner<_>| {
+    let gizmo_color = Color::from(ORANGE_700);
+    let corner1 = Vec3::new(box_select.start.x, box_select.start.y, box_select.loc.z);
+    let corner2 = Vec3::new(box_select.loc.x, box_select.start.y, box_select.start.z);
+    gizmos.line(box_select.start, corner1, gizmo_color);
+    gizmos.line(corner1, box_select.loc, gizmo_color);
+    gizmos.line(box_select.loc, corner2, gizmo_color);
+    gizmos.line(corner2, box_select.start, gizmo_color);
 
-            context.spawn((
-                Action::<BoxSelectUpdate>::new(),
-                Down::default(),
-                bindings![MouseButton::Middle],
-            ));
-
-            // let member1 = context
-            //     .spawn((Action::<BoxSelectUpdate1>::new(), Down::default(), bindings![KeyCode::KeyB]))
-            //     .id();
-            // let member2 = context
-            //     .spawn((Action::<BoxSelectUpdate2>::new(), Down::default(), bindings![MouseButton::Left]))
-            //     .id();
-            // context.spawn((Action::<BoxSelectUpdate>::new(), Chord::new([member1, member2])));
-
-            })) 
-        );
 }
 
-// #[derive(InputAction)]
-// #[action_output(bool)]
-// struct BoxSelectUpdate1;
 
-// #[derive(InputAction)]
-// #[action_output(bool)]
-// struct BoxSelectUpdate2;
 
-#[derive(InputAction)]
-#[action_output(bool)]
-struct BoxSelectUpdate;
+
+
+pub fn box_select_changed(
+    box_select: Res<BoxSelect>
+) -> bool {
+    box_select.is_changed()
+}
 
 #[derive(Event)]
 pub struct BoxSelectFinal{
@@ -75,102 +108,23 @@ impl BoxSelectFinal {
 }
 
 
-#[derive(Component, Debug)]
+#[derive(Resource, Debug)]
 pub struct BoxSelect {
+    pub active:  bool,
     pub start:  Vec3,
     pub loc:    Vec3,
     pub dims:   Vec2
 }
 
-impl BoxSelect {
-    fn new(loc: &Vec3) -> Self {
-        BoxSelect {
-            start: *loc,
-            loc: *loc,
-            dims: Vec2::ZERO
-        }
-    }
-}
-
 impl Default for BoxSelect {
     fn default() -> Self {
         BoxSelect {
+            active: false,
             start: Vec3::ZERO,
             loc: Vec3::ZERO,
             dims: Vec2::ZERO
         }
     }
-}
-
-
-fn start_boxselect(
-    _trigger:       On<Start<BoxSelectUpdate>>,
-    mut commands:   Commands,
-    mut meshes:     ResMut<Assets<Mesh>>,
-    mut materials:  ResMut<Assets<StandardMaterial>>,
-    input_data:     Res<PointerData>
-){
-    let Some(world_pos) = input_data.world_pos else {return};
-    commands.spawn((
-        Mesh3d(meshes.add(Cuboid::default())),
-        MeshMaterial3d(materials.add(Color::from(ORANGE_600).with_alpha(0.4))),
-        Transform::from_translation(world_pos),
-        BoxSelect::new(&world_pos),
-        NotShadowCaster,
-        NotShadowReceiver
-    ));
-}
-
-
-fn update_boxselect(
-    _trigger:   On<Fire<BoxSelectUpdate>>,
-    input_data: Res<PointerData>,
-    query:      Single<(&mut Transform, &mut BoxSelect)>
-){
-    let Some(world_pos) = input_data.world_pos else {return};
-    let (mut transform, mut box_select) = query.into_inner();
-
-    let new_x = (world_pos.x + box_select.start.x) / 2.0;
-    let new_z = (world_pos.z + box_select.start.z) / 2.0;
-    let dim_x = fabsf(world_pos.x - box_select.start.x);
-    let dim_z = fabsf(world_pos.z - box_select.start.z);
-    let max_y = world_pos.y.max(box_select.start.y) + 0.1;  
-    let dims = Vec2::new(dim_x, dim_z);
-    let loc = Vec3A::new(new_x, max_y, new_z);
-    box_select.loc = loc.into();
-    box_select.dims = dims; 
-    transform.translation = loc.into();
-    transform.scale = Vec3::new(dims.x, 1.0, dims.y);
-}
-
-fn end_cancel_boxselect(
-    _trigger:       On<Cancel<BoxSelectUpdate>>,
-    mut commands:   Commands,
-    query:          Single<(Entity, &BoxSelect)>
-){
-    let (bs_entity, box_select) = query.into_inner();
-    let aabb = AABB::from_loc_dims(box_select.loc.xz(), box_select.dims);
-    commands.trigger(BoxSelectFinal{aabb: aabb});
-    commands.entity(bs_entity).despawn();
-}
-
-
-fn end_boxselect(
-    _trigger:       On<Complete<BoxSelectUpdate>>,
-    mut commands:   Commands,
-    query:          Single<(Entity, &BoxSelect)>
-){
-    let (bs_entity, box_select) = query.into_inner();
-    let aabb = AABB::from_loc_dims(box_select.loc.xz(), box_select.dims);
-    commands.trigger(BoxSelectFinal{aabb: aabb});
-    commands.entity(bs_entity).despawn();
-}
-
-
-pub fn box_select_changed(
-    query: Query<Entity, Changed<BoxSelect>>
-) -> bool {
-    !query.is_empty()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

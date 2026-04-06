@@ -254,10 +254,7 @@ fn exit_editor(
 
 pub mod prelude {
     pub use crate::assets_panel::PGEditorAssetsPanelPlugin;
-    pub use crate::box_select::{
-        BoxSelectController, box_select_controller, box_select_changed, 
-        BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin
-    };
+    pub use crate::box_select::{box_select_changed, BoxSelectFinal, BoxSelect, PGEditorBoxSelectPlugin};
     pub use crate::brushes::{
         brush_changed, BrushDone, BrushStart,
         Brush, PGEditorBrushSelectPlugin, BrushType, ScatterBrush, NothingBrush
