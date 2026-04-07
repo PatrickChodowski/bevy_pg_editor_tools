@@ -9,8 +9,10 @@ use bevy_simple_text_input::{
     TextInputSystem, TextInputTextColor, TextInputTextFont, TextInputValue,
     TextInputPlaceholder, TextInputSubmitMessage
 };
+use bevy_pg_scenes::prelude::LoadTerrainPlane;
 
 use crate::EditorSettings;
+use crate::editor_pointer::EditorPointer;
 use crate::prelude::EditorMode;
 
 
@@ -31,11 +33,13 @@ fn read_plane_to_load_on_submit(
     mut msgs:     MessageReader<TextInputSubmitMessage>,
     mut commands: Commands,
     forms:        Query<&TextInputValue, With<LoadPlaneTextInput>>,
-    query:        Query<Entity, With<LoadPlanePopup>>
+    query:        Query<Entity, With<LoadPlanePopup>>,
+    editor_pointer: Res<EditorPointer>
 ){
     for msg in msgs.read(){
         if let Ok(value) = forms.get(msg.entity){
             info!("Spawn Plane scene: {}", value.0);
+            commands.trigger(LoadTerrainPlane{mesh_path: value.0.clone(), loc: Vec3::ZERO, for_editor: true});
         } 
 
         for entity in query.iter(){

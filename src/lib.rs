@@ -123,9 +123,9 @@ fn init_editor(
     editor_settings: Res<EditorSettings>
 ) {
     info!("[EDITOR] Entering Editor");
-    for terrain_entity in terrains.iter() {
-        commands.entity(terrain_entity).insert(PlaneToEdit::dummy());
-    }
+    // for terrain_entity in terrains.iter() {
+    //     commands.entity(terrain_entity).insert(PlaneToEdit::dummy());
+    // }
 
     let Ok((camera_entity, mut camera_data)) = camera.single_mut() else {
         return;
@@ -184,9 +184,9 @@ fn init_editor(
         ));
     }
 
-    for entity in terrains.iter() {
-        commands.entity(entity).insert(PlaneToEdit::dummy());
-    };
+    // for entity in terrains.iter() {
+    //     commands.entity(entity).insert(PlaneToEdit::dummy());
+    // };
     
 }
 
