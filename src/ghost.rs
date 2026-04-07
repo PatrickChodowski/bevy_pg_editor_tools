@@ -10,9 +10,8 @@ use std::io::{BufWriter, Write};
 
 use std::f32::consts::FRAC_PI_2;
 use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
-use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static, SceneObjectData, SceneData, Markee};
+use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static, SceneObjectData, SceneData, Markee, PlaneToEdit};
 
-use crate::planes::PlaneToEdit;
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::editor_pointer::EditorPointer;
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};

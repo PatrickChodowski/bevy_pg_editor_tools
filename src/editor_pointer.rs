@@ -4,8 +4,8 @@ use bevy::window::PrimaryWindow;
 use bevy::picking::hover::HoverMap;
 use bevy::picking::pointer::PointerId;
 use bevy_pg_nav::prelude::TerrainRayMeshData;
+use bevy_pg_scenes::prelude::PlaneToEdit;
 
-use crate::planes::PlaneToEdit;
 
 pub struct PGEditorPointer;
 

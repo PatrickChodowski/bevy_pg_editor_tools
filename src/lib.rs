@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
-use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static};
+use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static, PlaneToEdit};
 use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
 use bevy::pbr::wireframe::WireframePlugin;
@@ -11,6 +11,7 @@ pub mod brushes;
 pub mod controller;
 pub mod ghost;
 pub mod tracker;
+pub mod plane_loader;
 pub mod export_scene_obj;
 pub mod editor_pointer;
 pub mod thumbnails;
@@ -30,7 +31,8 @@ use box_select::PGEditorBoxSelectPlugin;
 use controller::{PGEditorControllerPlugin, EditorController};
 use editor_pointer::PGEditorPointer;
 use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorGhostTransformMemory};
-use planes::{PlaneToEdit, PGEditorPlanesPlugin};
+use planes::PGEditorPlanesPlugin;
+use plane_loader::PGEditorLoadPlanePlugin;
 use settings::EditorSettings;
 use thumbnails::PGEditorThumbnailsPlugin;
 use text_inputs::PGEditorTextInputs;
@@ -79,6 +81,7 @@ impl Plugin for PGEditorPlugin {
                 PGEditorUIPlugin
             )
         )
+        .add_plugins(PGEditorLoadPlanePlugin)
         .insert_resource(EditorSettings::new(
             self.brush_mapping,
             self.brush_id_labels.clone()
@@ -273,7 +276,7 @@ pub mod prelude {
         PGEditorTrackerPlugin, Undo, Redo, UndoMessage,
          RedoMessage, Changes, Change, ChangesSet, CurrentTransformChanges
     };
-    pub use crate::planes::{PlaneToEdit, plane_mesh};
+    pub use crate::planes::plane_mesh;
     pub use crate::vertex::{
         SpawnVertices, SelectedVertex, PlaneVertex, PGEditorVertexPlugin, VertexRefs, ShowVertices, HideVertices
     };

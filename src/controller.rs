@@ -5,14 +5,13 @@ use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
-use bevy_pg_scenes::prelude::{Spawner, Marker};
+use bevy_pg_scenes::prelude::{Spawner, Marker, PlaneToEdit};
 
 use crate::assets_panel::EditorAssetPanel;
 use crate::tracker::{Change, ChangeDespawn, Changes, ChangesSet, Redo, Undo};
 use crate::ghost::{EditorAsset, Ghost};
 use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoFocus, TransformGizmoMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
-use crate::planes::PlaneToEdit;
 use crate::settings::{EditorMode, EditorSettings};
 use crate::vertex::{DeselectAllVertices, HideVertices};
 

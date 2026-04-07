@@ -10,7 +10,7 @@ use bevy::mesh::SerializedMesh;
 use bevy::picking::pointer::PointerId;
 use bevy_pg_core::prelude::{GameStatePlay, PointerData};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig, TerrainRayMeshData};
-use bevy_pg_scenes::prelude::PGSerializedMesh;
+use bevy_pg_scenes::prelude::{PGSerializedMesh, PlaneToEdit};
 use bevy_simple_text_input::{
     TextInput, TextInputPlaceholder, TextInputSettings, TextInputTextFont, 
     TextInputTextColor, TextInputInactive, TextInputValue, TextInputSystem, TextInputSubmitMessage
@@ -682,42 +682,4 @@ pub fn plane_mesh(
         Pickable{should_block_lower: true, ..default()},
         PlaneToEdit{width, height, subdivisions, changes: 0}
     )
-}
-
-#[derive(Component)]
-pub struct PlaneToEdit{
-    pub width: f32,
-    pub height: f32,
-    pub subdivisions: u32,
-    pub changes: u32 
-}
-
-impl PlaneToEdit {
-    // Inserted into already created terrain
-    pub fn dummy() -> Self {
-        PlaneToEdit {
-            width: 0.0,
-            height: 0.0,
-            subdivisions: 0, 
-            changes: 0
-        }
-    }
-    pub fn new(width: f32, height: f32, subdivisions: u32) -> Self {
-        PlaneToEdit {
-            width, height, subdivisions, changes: 0
-        }
-    }
-
-    pub fn dims(&self) -> Vec2 {
-        return Vec2::new(self.width, self.height);
-    }
-
-    pub fn calculate_optimal_vertex_radius(&self, percentage: f32) -> f32 {
-        let spacing_x = self.height / (self.subdivisions+1).max(1) as f32;
-        let spacing_y = self.width / (self.subdivisions+1).max(1) as f32;
-        let min_spacing = spacing_x.min(spacing_y);
-        let max_radius = min_spacing / 2.0;
-        let safe_fill = percentage.clamp(0.01, 0.99);
-        max_radius * safe_fill
-    }
 }

@@ -7,8 +7,8 @@ use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::color::palettes::css::ORANGE_RED;
 use bevy_enhanced_input::prelude::*;
 use bevy_pg_core::prelude::GameStatePlay;
+use bevy_pg_scenes::prelude::PlaneToEdit;
 
-use crate::planes::PlaneToEdit;
 
 pub struct PGEditorVertexPlugin;
 
