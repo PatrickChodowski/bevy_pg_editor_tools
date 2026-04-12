@@ -50,6 +50,7 @@ fn read_plane_to_load_on_submit(
     load_scene_toggle: Single<&LoadSceneToggle>,
     load_on_pointer: Single<&LoadOnPointerToggle>,
 ){
+    info!("Read plane to load on submit: {} {}", load_terrain_toggle.0, load_scene_toggle.0 );
     for msg in msgs.read(){
         if let Ok(value) = forms.get(msg.entity){
             let mut spawn_loc: Option<Vec3> = None;
@@ -60,10 +61,12 @@ fn read_plane_to_load_on_submit(
             }
             if load_terrain_toggle.0 {
                 let full_terrain_path: String  = format!("scenes/terrains/{}.mesh.json", value.0);
+                info!("Triggering {}", full_terrain_path);
                 commands.trigger(LoadTerrainPlane{mesh_path: full_terrain_path.clone(), maybe_loc: spawn_loc, for_editor: true});
             }
             if load_scene_toggle.0 {
                 let full_scene_path: String  = format!("scenes/scenes/{}.scene.json", value.0);
+                info!("Triggering {}", full_scene_path);
                 commands.trigger(LoadPlaneScene{scene_path: full_scene_path.clone(), maybe_loc: spawn_loc, for_editor: true});                    
             }
 
@@ -161,12 +164,7 @@ fn spawn_load_plane_popup(
     ).id();
 
 
-
-    let entity1: Entity = if editor_settings.show_spawners {
-        commands.spawn(checkbox((Checked, LoadTerrainToggle(true)), Spawn((Text::new("Load Terrain"), ThemedText)))).id()
-    } else {
-        commands.spawn(checkbox((Checked, LoadTerrainToggle(false)), Spawn((Text::new("Load Terrain"), ThemedText)))).id()
-    };
+    let entity1: Entity = commands.spawn(checkbox((Checked, LoadTerrainToggle(true)), Spawn((Text::new("Load Terrain"), ThemedText)))).id();
     commands.entity(entity1).insert(
         observe(
             |change: On<ValueChange<bool>>, mut commands: Commands| {
@@ -182,11 +180,7 @@ fn spawn_load_plane_popup(
         )   
     );
 
-    let entity2: Entity = if editor_settings.show_spawners {
-        commands.spawn(checkbox((Checked, LoadSceneToggle(true)), Spawn((Text::new("Load Scene"), ThemedText)))).id()
-    } else {
-        commands.spawn(checkbox((Checked, LoadSceneToggle(false)), Spawn((Text::new("Load Scene"), ThemedText)))).id()
-    };
+    let entity2: Entity = commands.spawn(checkbox((Checked, LoadSceneToggle(true)), Spawn((Text::new("Load Scene"), ThemedText)))).id();
     commands.entity(entity2).insert(
         observe(
             |change: On<ValueChange<bool>>, mut commands: Commands| {
@@ -202,11 +196,7 @@ fn spawn_load_plane_popup(
         )   
     );
 
-    let entity3: Entity = if editor_settings.show_spawners {
-        commands.spawn(checkbox((Checked, LoadOnPointerToggle(true)), Spawn((Text::new("Use Editor Pointer"), ThemedText)))).id()
-    } else {
-        commands.spawn(checkbox((Checked, LoadOnPointerToggle(false)), Spawn((Text::new("Use Editor Pointer"), ThemedText)))).id()
-    };
+    let entity3: Entity = commands.spawn(checkbox((LoadOnPointerToggle(false)), Spawn((Text::new("Use Editor Pointer"), ThemedText)))).id();
     commands.entity(entity3).insert(
         observe(
             |change: On<ValueChange<bool>>, mut commands: Commands| {
