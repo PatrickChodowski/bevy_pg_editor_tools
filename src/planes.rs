@@ -162,11 +162,11 @@ fn delete_plane(
 
 fn serialize_plane(
     trigger:         On<SerializePlane>,
-    planes:          Query<(&Mesh3d, Option<&Name>, &PlaneToEdit)>,
+    planes:          Query<(&Mesh3d, &Transform, Option<&Name>, &PlaneToEdit)>,
     meshes:          Res<Assets<Mesh>>
 ){
 
-    if let Ok((mesh3d, maybe_name, plane)) = planes.get(trigger.plane_entity){
+    if let Ok((mesh3d, transform, maybe_name, plane)) = planes.get(trigger.plane_entity){
 
         if maybe_name.is_none(){
             warn!("Plane needs a name before serializing");
@@ -177,6 +177,7 @@ fn serialize_plane(
         let serialized_mesh = SerializedMesh::from_mesh(mesh.clone());
         let name_str = maybe_name.unwrap().to_string();
         let pg_serialized_mesh = PGSerializedMesh{
+            saved_loc: transform.translation,
             name: name_str.clone(),
             data: serialized_mesh,
             width: plane.width,
@@ -185,7 +186,7 @@ fn serialize_plane(
         };
 
         let json = serde_json::to_string_pretty(&pg_serialized_mesh).unwrap();
-        let mesh_path: String = format!("assets/meshes/{}.mesh.json", name_str);
+        let mesh_path: String = format!("assets/scenes/terrains/{}.mesh.json", name_str);
         info!("serializing to path: {}", mesh_path);
         let res = std::fs::write(mesh_path, json);
         info!("{:?}", res);    

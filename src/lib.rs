@@ -3,6 +3,7 @@ use bevy::platform::collections::HashMap;
 use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static, PlaneToEdit};
 use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
 use bevy_enhanced_input::prelude::ContextActivity;
+use bevy_infinite_grid::{InfiniteGridPlugin, InfiniteGridBundle};
 use bevy::pbr::wireframe::WireframePlugin;
 
 pub mod assets_panel;
@@ -81,7 +82,10 @@ impl Plugin for PGEditorPlugin {
                 PGEditorUIPlugin
             )
         )
-        .add_plugins(PGEditorLoadPlanePlugin)
+        .add_plugins((
+            PGEditorLoadPlanePlugin,
+            InfiniteGridPlugin
+        ))
         .insert_resource(EditorSettings::new(
             self.brush_mapping,
             self.brush_id_labels.clone()
@@ -183,6 +187,8 @@ fn init_editor(
             marker_visibility
         ));
     }
+
+    commands.spawn(InfiniteGridBundle::default());
 
     // for entity in terrains.iter() {
     //     commands.entity(entity).insert(PlaneToEdit::dummy());

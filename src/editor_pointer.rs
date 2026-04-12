@@ -25,6 +25,7 @@ impl Plugin for PGEditorPointer {
 pub struct EditorPointer {
     pub plane_loc: Option<Vec3>,
     pub center_screen_plane_pos: Option<Vec3>, 
+    pub center_screen_ypos: Option<Vec3>, 
     pub plane_entity: Option<Entity>,
     pub y0_pos: Option<Vec3> 
 }
@@ -33,6 +34,7 @@ impl Default for EditorPointer {
         EditorPointer {
             plane_loc: None,
             center_screen_plane_pos: None,
+            center_screen_ypos: None,
             plane_entity: None,
             y0_pos: None,
         }
@@ -45,6 +47,7 @@ impl EditorPointer {
         self.plane_loc = None;
         self.plane_entity = None;
         self.center_screen_plane_pos = None;
+        self.center_screen_ypos = None;
     }
     fn reset_click(&mut self) {
         self.plane_loc = None;
@@ -73,21 +76,29 @@ fn update_pointer(
             if cursor_ray.direction.y.abs() > f32::EPSILON {
                 let distance = -cursor_ray.origin.y / cursor_ray.direction.y;
                 if distance > 0.0 {
-                    let intersection_point = cursor_ray.get_point(distance);
-                    let target_x = intersection_point.x;
-                    let target_z = intersection_point.z;
-                    editor_pointer.y0_pos = Some(Vec3::new(target_x, 0.0, target_z));
+                    let target = cursor_ray.get_point(distance);
+                    editor_pointer.y0_pos = Some(Vec3::new(target.x, 0.0, target.z));
                 }
             }
         }
     }
     
     if let Ok(center_ray) = camera.viewport_to_world(camera_transform, center_position) {
+
+        // Plane Center position
         for (trmd, _plane) in planes.iter(){
             if let Some(intersection) = trmd.ray_intersection(&center_ray.origin, &center_ray.direction){
                 editor_pointer.center_screen_plane_pos = Some(intersection.position);
                 // info!("screen center plane pos: {:?}", editor_pointer.center_screen_plane_pos);
                 break;
+            }
+        }
+
+        if center_ray.direction.y.abs() > f32::EPSILON {
+            let distance = -center_ray.origin.y / center_ray.direction.y;
+            if distance > 0.0 {
+                let target = center_ray.get_point(distance);
+                editor_pointer.center_screen_ypos = Some(Vec3::new(target.x, 0.0, target.z));
             }
         }
     }

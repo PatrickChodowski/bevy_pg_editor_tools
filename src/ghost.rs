@@ -10,7 +10,7 @@ use std::io::{BufWriter, Write};
 
 use std::f32::consts::FRAC_PI_2;
 use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
-use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, Static, SceneObjectData, SceneData, Markee, PlaneToEdit};
+use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, SceneObjectData, SceneData, Markee, PlaneToEdit, Static};
 
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::editor_pointer::EditorPointer;
@@ -527,12 +527,11 @@ fn save_scene(
         };
         sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
     }
-    let filename = format!("./assets/scenes/{}.scene.json",name);
+    let filename = format!("./assets/scenes/scenes/{}.scene.json",name);
 
     info!("[EDITOR] Saving to file {}", filename);
     let sd = SceneData {
-        map_name: name.to_string(),
-        chunk_id: name.to_string(),
+        saved_loc: plane_transform.translation,
         objects: sods
     };
 

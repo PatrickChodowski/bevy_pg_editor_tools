@@ -6,10 +6,21 @@ use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::color::palettes::css::{WHITE, BLACK};
 use bevy_simple_text_input::{
     TextInput, TextInputInactive, TextInputSettings, 
-    TextInputSystem, TextInputTextColor, TextInputTextFont, TextInputValue,
+    TextInputTextColor, TextInputTextFont, TextInputValue,
     TextInputPlaceholder, TextInputSubmitMessage
 };
-use bevy_pg_scenes::prelude::LoadTerrainPlane;
+use bevy::feathers::theme::{ThemeBackgroundColor, ThemedText, UiTheme};
+use bevy::ui_widgets::{
+    slider_self_update, Activate, RadioButton, RadioGroup, 
+    SliderStep, SliderValue, SliderPrecision, ValueChange, observe
+};
+use bevy::feathers::controls::{
+    ButtonProps, SliderProps, ColorSliderProps, ColorChannel, ColorSwatch,  
+    button, checkbox, radio, slider, color_slider, color_swatch, ColorSlider, SliderBaseColor
+};
+use bevy::ui::Checked;
+
+use bevy_pg_scenes::prelude::{LoadPlaneScene, LoadTerrainPlane};
 
 use crate::EditorSettings;
 use crate::editor_pointer::EditorPointer;
@@ -21,7 +32,7 @@ pub struct PGEditorLoadPlanePlugin;
 impl Plugin for PGEditorLoadPlanePlugin {
     fn build(&self, app: &mut App) {
         app
-        .add_systems(Update, spawn_load_plane.run_if(in_state(GameStatePlay::Editor).and(input_just_pressed(KeyCode::KeyL))))
+        .add_systems(Update, spawn_load_plane_popup.run_if(in_state(GameStatePlay::Editor).and(input_just_pressed(KeyCode::KeyL))))
         .add_systems(Update, read_plane_to_load_on_submit.run_if(in_state(GameStatePlay::Editor).and(on_message::<TextInputSubmitMessage>)))
         ;
     }
@@ -34,18 +45,25 @@ fn read_plane_to_load_on_submit(
     mut commands: Commands,
     forms:        Query<&TextInputValue, With<LoadPlaneTextInput>>,
     query:        Query<Entity, With<LoadPlanePopup>>,
-    editor_pointer: Res<EditorPointer>
+    editor_pointer: Res<EditorPointer>,
+    load_terrain_toggle: Single<&LoadTerrainToggle>,
+    load_scene_toggle: Single<&LoadSceneToggle>,
+    load_on_pointer: Single<&LoadOnPointerToggle>,
 ){
     for msg in msgs.read(){
         if let Ok(value) = forms.get(msg.entity){
-            info!("Spawn Plane scene: {}", value.0);
-            commands.trigger(LoadTerrainPlane{mesh_path: value.0.clone(), loc: Vec3::ZERO, for_editor: true});
-        } 
+            if let Some(world_pos) = editor_pointer.center_screen_ypos {
+                let full_terrain_path: String  = format!("scenes/terrains/{}.mesh.json", value.0);
+                commands.trigger(LoadTerrainPlane{mesh_path: full_terrain_path.clone(), loc: world_pos, for_editor: true});
 
+                let full_scene_path: String  = format!("scenes/scenes/{}.scene.json", value.0);
+                commands.trigger(LoadPlaneScene{scene_path: full_scene_path.clone(), loc: world_pos, for_editor: true});
+
+            }
+        } 
         for entity in query.iter(){
             commands.entity(entity).despawn();
         }
-
     }
 }
 
@@ -56,7 +74,19 @@ struct LoadPlanePopup;
 #[derive(Component)]
 struct LoadPlaneTextInput;
 
-fn spawn_load_plane(
+
+#[derive(Component)]
+struct LoadTerrainToggle(bool);
+
+#[derive(Component)]
+struct LoadSceneToggle(bool);
+
+#[derive(Component)]
+struct LoadOnPointerToggle(bool);
+
+
+
+fn spawn_load_plane_popup(
     mut commands:    Commands,
     editor_settings: Res<EditorSettings>,
     query:           Query<Entity, With<LoadPlanePopup>>
@@ -123,7 +153,70 @@ fn spawn_load_plane(
         )
     ).id();
 
-    commands.entity(root).add_child(text_input);
+
+
+    let entity1: Entity = if editor_settings.show_spawners {
+        commands.spawn(checkbox((Checked, LoadTerrainToggle(true)), Spawn((Text::new("Load Terrain"), ThemedText)))).id()
+    } else {
+        commands.spawn(checkbox((Checked, LoadTerrainToggle(false)), Spawn((Text::new("Load Terrain"), ThemedText)))).id()
+    };
+    commands.entity(entity1).insert(
+        observe(
+            |change: On<ValueChange<bool>>, mut commands: Commands| {
+                let mut checkbox = commands.entity(change.source);
+                if change.value {
+                    checkbox.insert(Checked);
+                    checkbox.insert(LoadTerrainToggle(true));
+                } else {
+                    checkbox.remove::<Checked>();
+                    checkbox.insert(LoadTerrainToggle(false));
+                }
+            }
+        )   
+    );
+
+    let entity2: Entity = if editor_settings.show_spawners {
+        commands.spawn(checkbox((Checked, LoadSceneToggle(true)), Spawn((Text::new("Load Scene"), ThemedText)))).id()
+    } else {
+        commands.spawn(checkbox((Checked, LoadSceneToggle(false)), Spawn((Text::new("Load Scene"), ThemedText)))).id()
+    };
+    commands.entity(entity2).insert(
+        observe(
+            |change: On<ValueChange<bool>>, mut commands: Commands| {
+                let mut checkbox = commands.entity(change.source);
+                if change.value {
+                    checkbox.insert(Checked);
+                    checkbox.insert(LoadSceneToggle(true));
+                } else {
+                    checkbox.remove::<Checked>();
+                    checkbox.insert(LoadSceneToggle(false));
+                }
+            }
+        )   
+    );
+
+    let entity3: Entity = if editor_settings.show_spawners {
+        commands.spawn(checkbox((Checked, LoadOnPointerToggle(true)), Spawn((Text::new("Use Editor Pointer"), ThemedText)))).id()
+    } else {
+        commands.spawn(checkbox((Checked, LoadOnPointerToggle(false)), Spawn((Text::new("Use Editor Pointer"), ThemedText)))).id()
+    };
+    commands.entity(entity3).insert(
+        observe(
+            |change: On<ValueChange<bool>>, mut commands: Commands| {
+                let mut checkbox = commands.entity(change.source);
+                if change.value {
+                    checkbox.insert(Checked);
+                    checkbox.insert(LoadOnPointerToggle(true));
+                } else {
+                    checkbox.remove::<Checked>();
+                    checkbox.insert(LoadOnPointerToggle(false));
+                }
+            }
+        )   
+    );
+
+
+    commands.entity(root).add_children(&[text_input, entity1, entity2, entity3]);
 
 }
 
