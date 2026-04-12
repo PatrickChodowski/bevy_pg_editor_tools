@@ -1225,7 +1225,7 @@ dependencies = [
 [[package]]
 name = "bevy_pg_core"
 version = "1.18.0"
-source = "git+https://www.github.com/PatrickChodowski/bevy_pg_core#d03ae2c4bdf695d184687b7c7e844479e8788052"
+source = "git+https://www.github.com/PatrickChodowski/bevy_pg_core#9af2b01762077db812961a72d62a3c8610c7db69"
 dependencies = [
  "bevy",
  "bevy_enhanced_input",

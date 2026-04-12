@@ -4,6 +4,7 @@ use bevy::input::common_conditions::input_just_pressed;
 use bevy_pg_core::prelude::GameStatePlay;
 use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::color::palettes::css::{WHITE, BLACK};
+use bevy_pg_scenes::maps::LoadMap;
 use bevy_simple_text_input::{
     TextInput, TextInputInactive, TextInputSettings, 
     TextInputTextColor, TextInputTextFont, TextInputValue,
@@ -53,21 +54,41 @@ fn read_plane_to_load_on_submit(
     info!("Read plane to load on submit: {} {}", load_terrain_toggle.0, load_scene_toggle.0 );
     for msg in msgs.read(){
         if let Ok(value) = forms.get(msg.entity){
-            let mut spawn_loc: Option<Vec3> = None;
-            if load_on_pointer.0 {
-                if let Some(world_pos) = editor_pointer.center_screen_ypos {
-                    spawn_loc = Some(world_pos);
+
+            if value.0.contains("map:"){
+                // Read and load from config map
+                let map_name = value.0.replace("map:", "");
+                let full_map_path: String  = format!("scenes/maps/{}.map.json", map_name);
+                info!("Triggering {}", full_map_path);
+                commands.trigger(
+                    LoadMap{
+                        map_path: full_map_path.clone(), 
+                        maybe_loc: None, 
+                        load_terrains: load_terrain_toggle.0,
+                        load_scenes: load_scene_toggle.0,
+                        for_editor: true
+                    });
+
+            } else {
+                // Load a Plane and scene
+
+                let mut spawn_loc: Option<Vec3> = None;
+                if load_on_pointer.0 {
+                    if let Some(world_pos) = editor_pointer.center_screen_ypos {
+                        spawn_loc = Some(world_pos);
+                    }
                 }
-            }
-            if load_terrain_toggle.0 {
-                let full_terrain_path: String  = format!("scenes/terrains/{}.mesh.json", value.0);
-                info!("Triggering {}", full_terrain_path);
-                commands.trigger(LoadTerrainPlane{mesh_path: full_terrain_path.clone(), maybe_loc: spawn_loc, for_editor: true});
-            }
-            if load_scene_toggle.0 {
-                let full_scene_path: String  = format!("scenes/scenes/{}.scene.json", value.0);
-                info!("Triggering {}", full_scene_path);
-                commands.trigger(LoadPlaneScene{scene_path: full_scene_path.clone(), maybe_loc: spawn_loc, for_editor: true});                    
+                if load_terrain_toggle.0 {
+                    let full_terrain_path: String  = format!("scenes/terrains/{}.mesh.json", value.0);
+                    info!("Triggering {}", full_terrain_path);
+                    commands.trigger(LoadTerrainPlane{mesh_path: full_terrain_path.clone(), maybe_loc: spawn_loc, for_editor: true});
+                }
+                if load_scene_toggle.0 {
+                    let full_scene_path: String  = format!("scenes/scenes/{}.scene.json", value.0);
+                    info!("Triggering {}", full_scene_path);
+                    commands.trigger(LoadPlaneScene{scene_path: full_scene_path.clone(), maybe_loc: spawn_loc, for_editor: true});                    
+                }
+
             }
 
         } 
