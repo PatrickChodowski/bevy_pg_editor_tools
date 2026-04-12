@@ -520,7 +520,7 @@ fn save_scene(
         // }
 
         let sod = SceneObjectData {
-            location: transform.translation,
+            location: transform.translation - plane_transform.translation, // Adjust to origin (plane translation is an origin for a chunk)
             rotation: transform.rotation.to_euler(EulerRot::XYZ).into(),
             scale: transform.scale,
             data,

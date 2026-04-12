@@ -52,14 +52,21 @@ fn read_plane_to_load_on_submit(
 ){
     for msg in msgs.read(){
         if let Ok(value) = forms.get(msg.entity){
-            if let Some(world_pos) = editor_pointer.center_screen_ypos {
-                let full_terrain_path: String  = format!("scenes/terrains/{}.mesh.json", value.0);
-                commands.trigger(LoadTerrainPlane{mesh_path: full_terrain_path.clone(), loc: world_pos, for_editor: true});
-
-                let full_scene_path: String  = format!("scenes/scenes/{}.scene.json", value.0);
-                commands.trigger(LoadPlaneScene{scene_path: full_scene_path.clone(), loc: world_pos, for_editor: true});
-
+            let mut spawn_loc: Option<Vec3> = None;
+            if load_on_pointer.0 {
+                if let Some(world_pos) = editor_pointer.center_screen_ypos {
+                    spawn_loc = Some(world_pos);
+                }
             }
+            if load_terrain_toggle.0 {
+                let full_terrain_path: String  = format!("scenes/terrains/{}.mesh.json", value.0);
+                commands.trigger(LoadTerrainPlane{mesh_path: full_terrain_path.clone(), maybe_loc: spawn_loc, for_editor: true});
+            }
+            if load_scene_toggle.0 {
+                let full_scene_path: String  = format!("scenes/scenes/{}.scene.json", value.0);
+                commands.trigger(LoadPlaneScene{scene_path: full_scene_path.clone(), maybe_loc: spawn_loc, for_editor: true});                    
+            }
+
         } 
         for entity in query.iter(){
             commands.entity(entity).despawn();
