@@ -35,6 +35,9 @@ impl Plugin for PGEditorAssetsPanelPlugin {
                 update_assets_bar.after(TextInputSystem)
             ).run_if(in_state(GameStatePlay::Editor))
         )
+        .add_observer(asset_button_over)
+        .add_observer(asset_button_out)
+        .add_observer(asset_button_pressed)
         ;
     }
 }
@@ -52,16 +55,14 @@ fn update_assets_bar(
     ass:            Res<AssetServer>
 ) {
     commands.entity(*asset_bar).despawn_related::<Children>();
-
     let filter_text = asset_filter.0.clone().replace(" ","").to_lowercase();
     let assets: Vec<String> = asset_list.data.clone().into_iter().filter(|x| x.to_lowercase().contains(&filter_text)).collect::<Vec<String>>();
 
-    commands.entity(*asset_bar).with_children(|bar|{
-        for file_name in assets.iter() {
-            spawn_asset_button(bar, file_name.to_string(), &ass);  
-        }
-    });
-
+    let mut asset_buttons: Vec<Entity> = Vec::with_capacity(assets.len());
+    for file_name in assets.iter() {
+        asset_buttons.push(spawn_asset_button(file_name.to_string(), &mut commands, &ass));
+    }
+    commands.entity(*asset_bar).add_children(&asset_buttons);
 }
 
 
@@ -88,16 +89,18 @@ fn init(
 
     assets.extend(spawner_list.iter().map(|a| a.to_string()));
     assets.extend(marker_list.iter().map(|a| a.to_string()));
+    assets.push("water".to_string());
     assets.sort();
 
     commands.insert_resource(AssetList{data: assets.clone()});
  
-    let assets_bar = commands.spawn(assets_bar()).with_children(|bar| {
-        for file_name in assets.iter() {
-            spawn_asset_button(bar, file_name.to_string(), &ass);  
-        }
-    }).id();
+    let assets_bar = commands.spawn(assets_bar()).id();
 
+    let mut asset_buttons: Vec<Entity> = Vec::with_capacity(assets.len());
+    for file_name in assets.iter() {
+        asset_buttons.push(spawn_asset_button(file_name.to_string(), &mut commands, &ass));
+    }
+    commands.entity(assets_bar).add_children(&asset_buttons);
     commands.entity(panel).add_children(&[text_input, assets_bar]);
 }
 
@@ -112,12 +115,34 @@ const LINE_HEIGHT: f32 = 21.;
 #[derive(Component)]
 pub struct EditorAssetPanel;
 
+
+
+
 #[derive(Component)]
-struct AssetButton {
-    label: String,
-    spawner: bool,
-    marker: bool
+pub struct AssetButton {
+    asset: EditorAsset,
+    name: String
 }
+
+impl AssetButton {
+    fn from_name(name: String) -> Self {
+        let clean_name = name.replace(".glb","").replace(".png","");
+        let mut asset = EditorAsset::Asset(clean_name.clone());
+        if clean_name.contains("Spawner"){
+            asset = EditorAsset::Spawner(clean_name.clone());
+        } else if clean_name.contains("Marker") {
+            asset = EditorAsset::Marker(clean_name.clone());
+        } else if clean_name.contains("water"){
+            asset = EditorAsset::Water;
+        }
+        return Self {asset, name: clean_name.clone()};
+    }
+
+    fn spawn_asset(&self, rotation: Option<Quat>, scale: Option<Vec3>) -> EditorSpawnAsset {
+        return EditorSpawnAsset::new(self.asset.clone(), None, rotation, scale);
+    }
+}
+
 
 #[derive(Component)]
 struct AssetButtonLabel;
@@ -130,20 +155,17 @@ struct AssetSearch;
 
 
 fn spawn_asset_button(
-    builder:    &mut ChildSpawnerCommands, 
     file_name:  String,
+    commands:   &mut Commands, 
     ass:        &Res<AssetServer>
-){
-    let mut path = format!("editor/{}", file_name.replace(".glb", ".png"));
-    let spawner: bool = file_name.contains("Spawner_");
-    let marker: bool = file_name.contains("Marker_");
+) -> Entity {
 
-    // For Spawners or markers
-    if spawner | marker {
-        path = format!("{}.png", path);
+    let mut image_path = format!("editor/{}", file_name.replace(".glb", ".png"));
+    if file_name.contains("Spawner_") | file_name.contains("Marker_") | (file_name == "water") {
+        image_path = format!("{}.png", image_path);
     }
-    let image = ass.load(path);
-    builder.spawn((
+
+    let entity = commands.spawn((
         Node {
             margin: UiRect::all(Val::Px(IMG_MARGIN)),
             align_content: AlignContent::Center,
@@ -152,17 +174,14 @@ fn spawn_asset_button(
             border_radius: BorderRadius::all(Val::Px(5.0)),
             ..default()
         },
-        ImageNode::new(image.clone()),
+        ImageNode::new(ass.load(image_path).clone()),
         Pickable {
-            should_block_lower: false,
+            should_block_lower: false, // why?
             ..default()
         },
-        AssetButton{label: file_name.replace(".glb", ""), spawner, marker}
-    ))
-    .observe(asset_button_over)
-    .observe(asset_button_out)
-    .observe(asset_button_pressed)
-    ;
+        AssetButton::from_name(file_name)
+    )).id();    
+    return entity
 }
 
 fn vertical_right_panel() -> impl Bundle {
@@ -245,14 +264,13 @@ fn asset_button_over(
     ass:          Res<AssetServer>,
     sound_entity: Single<Entity, With<EditorSounds>>
 ){
-    let entity = trigger.entity;
-    if let Ok((mut node, assbutton)) = query.get_mut(entity){
+    if let Ok((mut node, assbutton)) = query.get_mut(trigger.entity){
         node.width = Val::Px(IMG_DIM_FOCUS);
         node.height = Val::Px(IMG_DIM_FOCUS);
         node.margin = UiRect::all(Val::Px(IMG_MARGIN_FOCUS));
 
         let _label_entity = commands.spawn((
-            Text::new(assbutton.label.clone()),
+            Text::new(assbutton.name.clone()),
             TextColor(BLACK.into()),
             Node{
                 position_type: PositionType::Absolute,
@@ -264,7 +282,7 @@ fn asset_button_over(
             DespawnOnExit(GameStatePlay::Editor)
         )).id();
 
-        commands.entity(entity).insert(
+        commands.entity(trigger.entity).insert(
             BoxShadow::new(
                 Color::BLACK.with_alpha(0.8),
                 Val::Percent(5.0),
@@ -287,16 +305,15 @@ fn asset_button_out(
     button_label:   Query<Entity, With<AssetButtonLabel>>,
     mut commands:   Commands
 ){
-    let entity = trigger.entity;
-    if let Ok(mut node) = query.get_mut(entity){
+    if let Ok(mut node) = query.get_mut(trigger.entity){
         node.width = Val::Px(IMG_DIM);
         node.height = Val::Px(IMG_DIM);
         node.margin = UiRect::all(Val::Px(IMG_MARGIN));
+        for label_entity in button_label.iter(){
+            commands.entity(label_entity).try_despawn();
+        }
+        commands.entity(trigger.entity).try_remove::<BoxShadow>();
     }
-    for label_entity in button_label.iter(){
-        commands.entity(label_entity).despawn();
-    }
-    commands.entity(entity).remove::<BoxShadow>();
 }
 
 
@@ -324,29 +341,7 @@ fn asset_button_pressed(
     }
 
     if let Ok(asset_button) = query.get(trigger.entity){
-
-        let event = match (asset_button.spawner, asset_button.marker) {
-            (false, false) => {
-                EditorSpawnAsset::new(
-                    EditorAsset::Asset(asset_button.label.clone()), 
-                    None, rotation, scale
-                )
-            },
-            (true, false) => {
-                EditorSpawnAsset::new(
-                    EditorAsset::Spawner(asset_button.label.clone()), 
-                    None, rotation, scale
-                )
-            },
-            (false, true) => {
-                EditorSpawnAsset::new(
-                    EditorAsset::Marker(asset_button.label.clone()), 
-                    None, rotation, scale
-                )
-            },
-            (true, true) => {panic!("Wrong Editor Button: spawner and marker")}
-        };
-        writer.write(event);
+        writer.write(asset_button.spawn_asset(rotation, scale));
     }   
 }
 

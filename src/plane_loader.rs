@@ -105,7 +105,6 @@ struct LoadPlanePopup;
 #[derive(Component)]
 struct LoadPlaneTextInput;
 
-
 #[derive(Component)]
 struct LoadTerrainToggle(bool);
 

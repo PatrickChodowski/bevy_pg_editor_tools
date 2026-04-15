@@ -10,7 +10,7 @@ use std::io::{BufWriter, Write};
 
 use std::f32::consts::FRAC_PI_2;
 use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
-use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, SceneObjectData, SceneData, Markee, PlaneToEdit, Static};
+use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, SceneObjectData, SceneData, Markee, PlaneToEdit, Static, WaterData, WaterChunk, water_bundle, water_mm};
 
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::editor_pointer::EditorPointer;
@@ -384,7 +384,8 @@ fn spawn_asset(
     mut materials:  ResMut<Assets<StandardMaterial>>,
     pointer:        Res<EditorPointer>,
     mut changes:    ResMut<Changes>,
-    ghost_settings: Res<EditorGhostSettings>
+    ghost_settings: Res<EditorGhostSettings>,
+    water_data:     Res<WaterData>
 ){
     let mut spawns = ChangesSet::new();
     for ev in event.read(){
@@ -417,44 +418,42 @@ fn spawn_asset(
             scale = ev_scale;
         } else {
             scale = Vec3::splat(1.0);
-            // match ev.asset {
-            //     EditorAsset::Marker(_) => {
-            //         scale = Vec3::splat(1.0);
-            //     }
-            //     _ => {
-            //         scale = Vec3::splat(1.0);
-            //     }
-            // }
         }
-
-
 
         // Only one that might be missing (based on pointer/world position)
         if let Some(translation) = translation {
             let mut transform = Transform::from_translation(translation).with_rotation(rotation).with_scale(scale);
-
-            let entity = commands.spawn(
-                editor_asset_bundle(
-                    ev.asset.clone(),
-                    &ass,
-                    &mut meshes,
-                    &mut materials,
-                    &mut transform,
-                    &ghost_settings
-                )
-            ).id();
-
-            spawns.add(ChangeSpawn::new(entity, ev.asset.clone(), transform.clone()));
-
-
-
-            // Special casing for marker hierarchy?
-            match ev.asset {
-                EditorAsset::Marker(_) => {
+            
+            let entity: Entity = match ev.asset {
+                EditorAsset::Water => {
+                    let entity = commands.spawn(
+                        water_bundle(
+                            &mut meshes, 
+                            water_data.material.clone(), 
+                            &translation,
+                            &Vec2::splat(1.0)
+                        )
+                    ).id();
+                    commands.entity(entity).insert(ev.asset.clone());
+                    entity
+                }
+                _ => {
+                    let entity = commands.spawn(
+                        editor_asset_bundle(
+                            ev.asset.clone(),
+                            &ass,
+                            &mut meshes,
+                            &mut materials,
+                            &mut transform,
+                            &ghost_settings
+                        ).unwrap()
+                    ).id();
+                    entity
 
                 }
-                _ => {}
-            }
+            };
+
+            spawns.add(ChangeSpawn::new(entity, ev.asset.clone(), transform.clone()));
         }
     }
 
@@ -548,9 +547,10 @@ fn save_scene(
 
 #[derive(Component, Clone, Debug)]
 pub enum EditorAsset {
-    Spawner(String),
     Asset(String),
-    Marker(String)
+    Spawner (String),
+    Marker(String),
+    Water
 }
 
 pub(super) fn editor_asset_bundle(
@@ -560,7 +560,7 @@ pub(super) fn editor_asset_bundle(
     materials:  &mut ResMut<Assets<StandardMaterial>>,
     transform:  &Transform,
     settings:   &Res<EditorGhostSettings>
-) -> impl Bundle {
+) -> Result<impl Bundle> {
     
     let ghost_material: Handle<StandardMaterial>;
     let mesh: Handle<Mesh>;
@@ -599,6 +599,10 @@ pub(super) fn editor_asset_bundle(
             ghost_material = material.clone();
             name = marker_name
         }
+        _ => {
+            return Err("Wrong wrong wrong".into());
+            /* Water handled in other function */
+        }
     }
 
     let bundle = (
@@ -613,17 +617,19 @@ pub(super) fn editor_asset_bundle(
         Pickable::default() // Editor only
     );
 
-    return bundle;
+    return Ok(bundle);
 }
 
 fn add_editor_asset(
     trigger: On<Add, EditorAsset>,
-    query: Query<(&EditorAsset, Option<&Spawner>, Option<&Marker>)>,
+    query: Query<(&EditorAsset, Option<&Spawner>, Option<&Marker>, Option<&WaterChunk>)>,
     ghost_settings: Res<EditorGhostSettings>,
-    mut commands: Commands
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    water_data: Res<WaterData>
 ){
     let entity = trigger.entity;
-    let Ok((asset, maybe_spawner, maybe_marker)) = query.get(entity) else {return};
+    let Ok((asset, maybe_spawner, maybe_marker, maybe_water)) = query.get(entity) else {return};
     match asset {
         EditorAsset::Asset(asset_name) => {
             let asset_path = format!("objects/{}.glb", asset_name.clone());
@@ -631,14 +637,17 @@ fn add_editor_asset(
         }
         EditorAsset::Spawner(spawner_name) => {
             if let Some(_spawner) = maybe_spawner {} else{
-                // Insert generic spawner only if there is no spawner component yet;
                 commands.entity(entity).insert((ghost_settings.spawners_mapping)(spawner_name.clone(), &None));
             }
         }
         EditorAsset::Marker(marker_name) => {
             if let Some(_marker) = maybe_marker {} else{
-                // Insert generic marker only if there is no spawner component yet;
                 commands.entity(entity).insert((ghost_settings.markers_mapping)(marker_name.clone()));
+            }
+        }
+        EditorAsset::Water => {
+            if let Some(water) = maybe_water {
+                commands.entity(entity).insert(water_mm(&mut meshes, water_data.material.clone(), &water.dims));
             }
         }
     }

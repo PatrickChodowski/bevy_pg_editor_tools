@@ -238,7 +238,7 @@ impl Change for ChangeSpawn {
                 &mut materials,
                 &self.transform,
                 &ghost_settings
-            )
+            ).unwrap()  // WILL FAIL WITH WATER
         ).id();
         self.entity = entity;    
         system_state.apply(world);   
@@ -295,7 +295,7 @@ impl Change for ChangeDespawn {
                 &mut materials,
                 &self.transform,
                 &ghost_settings
-            )
+            ).unwrap() // WILL FAIL WITH WATER
         ).id();
         self.entity = entity;
         system_state.apply(world);

@@ -200,10 +200,6 @@ fn chunk_plane(
     planes:         Query<(&Mesh3d, &PlaneToEdit, Option<&Name>)>,
     mut meshes:     ResMut<Assets<Mesh>>,
     mut materials:  ResMut<Assets<StandardMaterial>>,
-
-    // current_chunk:  Res<CurrentChunk>,
-    // terrain_chunks: Query<(&TerrainChunk, &Name)>,
-    // mapsdata:       Res<MapsData>
 ){
     let Ok((plane_mesh, plane, maybe_name)) = planes.get(trigger.plane_entity) else {return};
 
@@ -358,11 +354,11 @@ fn chunk_candidates(k: u32) -> Vec<u32> {
 
 fn navmesh_generation(
     trigger:       On<NavMeshGeneration>,
-    mut commands:   Commands,
-    planes:         Query<&PlaneToEdit>
+    planes:        Query<&PlaneToEdit>,
     // current_chunk:  Res<CurrentChunk>,
     // terrain_chunks: Query<(&TerrainChunk, &Name)>,
-    // mapsdata:       Res<MapsData>
+    // mapsdata:       Res<MapsData>,
+    mut gnm:        MessageWriter<GenerateNavMesh>
 ){
 
     if planes.contains(trigger.plane_entity){

@@ -287,7 +287,7 @@ impl BrushType for ScatterBrush {
                     &mut materials,
                     &transform,
                     &ghost_settings
-                )
+                ).unwrap()
             ).id();
 
             commands.entity(entity).remove::<Ghost>();        
