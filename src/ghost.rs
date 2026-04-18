@@ -10,7 +10,7 @@ use std::io::{BufWriter, Write};
 
 use std::f32::consts::FRAC_PI_2;
 use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB};
-use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, SceneObjectData, SceneData, Markee, PlaneToEdit, Static, WaterData, WaterChunk, water_bundle, water_mm};
+use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, SceneObjectData, SceneData, Markee, PlaneToEdit, Static, WaterData, WaterChunk, spawn_water, water_mm};
 
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::editor_pointer::EditorPointer;
@@ -426,16 +426,9 @@ fn spawn_asset(
             
             let entity: Entity = match ev.asset {
                 EditorAsset::Water => {
-                    let entity = commands.spawn(
-                        water_bundle(
-                            &mut meshes, 
-                            water_data.material.clone(), 
-                            &translation,
-                            &Vec2::splat(1.0)
-                        )
-                    ).id();
-                    commands.entity(entity).insert(ev.asset.clone());
-                    entity
+                    let water_entity = spawn_water(&mut commands, &mut meshes, &mut materials, water_data.material.clone(), &translation, &Vec2::splat(1.0), true);
+                    commands.entity(water_entity).insert(ev.asset.clone());
+                    water_entity
                 }
                 _ => {
                     let entity = commands.spawn(
@@ -626,6 +619,7 @@ fn add_editor_asset(
     ghost_settings: Res<EditorGhostSettings>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     water_data: Res<WaterData>
 ){
     let entity = trigger.entity;
@@ -647,7 +641,7 @@ fn add_editor_asset(
         }
         EditorAsset::Water => {
             if let Some(water) = maybe_water {
-                commands.entity(entity).insert(water_mm(&mut meshes, water_data.material.clone(), &water.dims));
+                water_mm(entity, &mut commands, &mut meshes, &mut materials, water_data.material.clone(), &water.dims, true);
             }
         }
     }
