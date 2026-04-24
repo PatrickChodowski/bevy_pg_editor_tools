@@ -4,7 +4,7 @@ use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
 use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
-use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig};
+use bevy_pg_nav::prelude::NavConfig;
 use bevy_pg_scenes::prelude::{Spawner, Marker, PlaneToEdit};
 
 use crate::assets_panel::EditorAssetPanel;

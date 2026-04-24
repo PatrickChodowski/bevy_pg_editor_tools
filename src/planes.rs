@@ -8,7 +8,7 @@ use bevy::color::palettes::css::{WHITE, BLACK};
 use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::mesh::SerializedMesh;
 use bevy::picking::pointer::PointerId;
-use bevy_pg_core::prelude::{GameStatePlay, PointerData};
+use bevy_pg_core::prelude::{GameStatePlay, PointerData, TerrainChunk};
 use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig, TerrainRayMeshData};
 use bevy_pg_scenes::prelude::{PGSerializedMesh, PlaneToEdit};
 use bevy_simple_text_input::{
@@ -119,7 +119,8 @@ fn spawn_plane(
     let plane_entity = commands.spawn((
         plane_mesh(dim_x, dim_z, subs, &mut meshes),
         MeshMaterial3d(materials.add(StandardMaterial::from_color(Color::WHITE))),
-        Transform::from_translation(loc)
+        Transform::from_translation(loc),
+        TerrainChunk{dims: Vec2::new(dim_x, dim_z)}
     )).id();
 
     if editor_settings.plane_wireframe {
@@ -355,31 +356,12 @@ fn chunk_candidates(k: u32) -> Vec<u32> {
 fn navmesh_generation(
     trigger:       On<NavMeshGeneration>,
     planes:        Query<&PlaneToEdit>,
-    // current_chunk:  Res<CurrentChunk>,
-    // terrain_chunks: Query<(&TerrainChunk, &Name)>,
-    // mapsdata:       Res<MapsData>,
-    mut gnm:        MessageWriter<GenerateNavMesh>
+    mut commands:  Commands
 ){
-
     if planes.contains(trigger.plane_entity){
         info!("Triggered navmesh generation for {}", trigger.plane_entity);
+        commands.trigger(GenerateNavMesh{plane_entity: trigger.plane_entity});
     }
-
-
-    // for (terrain_chunk, name) in terrain_chunks.iter(){
-    //     if (terrain_chunk.map_name == current_chunk.map_name) &
-    //        (terrain_chunk.chunk_id == current_chunk.chunk_id) {
-
-    //         commands.write_message(GenerateNavMesh::new(
-    //             name.to_string(), 
-    //             &current_chunk.map_name, 
-    //             &current_chunk.chunk_id,
-    //             mapsdata.chunk_size
-            
-    //         ));
-    //         break;
-    //     }
-    // }
 }
 
 #[derive(Event)]
