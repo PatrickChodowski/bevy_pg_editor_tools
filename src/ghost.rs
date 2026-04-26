@@ -5,6 +5,7 @@ use bevy::picking::pointer::PointerId;
 use bevy::prelude::*;
 use bevy::prelude::Press;
 use bevy::tasks::IoTaskPool;
+use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
@@ -147,7 +148,7 @@ fn toggle_ghost(
     trigger:            On<Pointer<Press>>,
     mut commands:       Commands,
     query:              Query<(Entity, &MeshMaterial3d<StandardMaterial>, Option<&Ghost>, Option<&TransformGizmoFocus>)>,
-    assets:             Query<&EditorAsset>,
+    assets:             Query<&Static>,
     planes:             Query<&PlaneToEdit>,
     focus:              Query<Entity, With<TransformGizmoFocus>>,
     ghosts:             Query<Entity, With<Ghost>>,
@@ -538,7 +539,7 @@ fn save_scene(
 }
 
 
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Serialize, Deserialize)]
 pub enum EditorAsset {
     Asset(String),
     Spawner (String),
@@ -607,6 +608,7 @@ pub(super) fn editor_asset_bundle(
         AssignComponents,
         asset.clone(),
         DespawnOnExit(GameState::Play),
+        Static,
         Pickable::default() // Editor only
     );
 
