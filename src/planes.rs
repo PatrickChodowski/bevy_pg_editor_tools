@@ -9,7 +9,7 @@ use bevy::color::palettes::tailwind::GRAY_500;
 use bevy::mesh::SerializedMesh;
 use bevy::picking::pointer::PointerId;
 use bevy_pg_core::prelude::{GameStatePlay, PointerData, TerrainChunk};
-use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, NavConfig, TerrainRayMeshData};
+use bevy_pg_nav::prelude::{GenerateNavMesh, PGNavmesh, TerrainRayMeshData};
 use bevy_pg_scenes::prelude::{PGSerializedMesh, PlaneToEdit};
 use bevy_simple_text_input::{
     TextInput, TextInputPlaceholder, TextInputSettings, TextInputTextFont, 

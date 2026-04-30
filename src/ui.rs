@@ -12,13 +12,13 @@ use bevy::ui_widgets::{
 };
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy_pg_core::prelude::GameStatePlay;
-use bevy_pg_nav::prelude::NavConfig;
+// use bevy_pg_nav::prelude::NavConfig;
 
 use crate::controller::{TogglePlaneWireframe, TogglePlaneApplyToAll};
 use crate::prelude::{
     ToggleMarkersVis, ToggleSnapNav, EditorSettings, 
     ToggleSpawnersVis, ChangeBrush, ChangeEditorMode, 
-    EditorMode, TriggerThumbnails, ToggleNavmeshDebug
+    EditorMode, TriggerThumbnails
 };
 use crate::planes::SpawnPlane;
 use crate::text_inputs::{loc_input_field, plane_input_field};
@@ -64,8 +64,7 @@ pub struct EditorControlsPanel;
 
 fn init_editor_ui(
     mut commands:       Commands,
-    editor_settings:    Res<EditorSettings>,
-    navconfig:          Res<NavConfig>
+    editor_settings:    Res<EditorSettings>
 ){
     info!(" [EDITOR] Init UI");
     commands.insert_resource(UiTheme(create_dark_theme()));
@@ -109,8 +108,7 @@ fn init_editor_ui(
         plane_wireframe_checkbox(&mut commands, &editor_settings),
         plane_apply_to_all_checkbox(&mut commands, &editor_settings),
         empty_row(&mut commands, 40.0),
-        other_buttons(&mut commands),
-        navmesh_config_buttons(&mut commands, &navconfig)
+        other_buttons(&mut commands)
     ];
     commands.entity(root).add_children(&children);
 
@@ -869,51 +867,6 @@ fn new_plane_settings(
     )).id();
 
 
-    return local_root;
-
-}
-
-
-
-fn navmesh_config_buttons(
-    commands: &mut Commands, 
-    navconfig: &Res<NavConfig>
-) -> Entity {
-
-    let local_root = commands.spawn(
-        (
-            Node {
-                display: Display::Flex,
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Start,
-                column_gap: px(8),
-                ..default()
-            },
-            SceneControls
-        )
-    ).id();
-
-    let entity = if navconfig.debug {
-        commands.spawn(checkbox((Checked, SceneControls, EditorControls), Spawn((Text::new("Debug NavMesh"), ThemedText)))).id()
-    } else {
-        commands.spawn(checkbox((SceneControls, EditorControls), Spawn((Text::new("Debug NavMesh"), ThemedText)))).id()
-    };
-    commands.entity(entity).insert(
-        observe(
-            |change: On<ValueChange<bool>>, mut commands: Commands| {
-                commands.trigger(ToggleNavmeshDebug{value: change.value});
-                let mut checkbox = commands.entity(change.source);
-                if change.value {
-                    checkbox.insert(Checked);
-                } else {
-                    checkbox.remove::<Checked>();
-                }
-            }
-        )   
-    );
-
-    commands.entity(local_root).add_children(&vec![entity]);
     return local_root;
 
 }

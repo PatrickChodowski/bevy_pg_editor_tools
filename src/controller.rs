@@ -3,8 +3,7 @@ use bevy::prelude::*;
 use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
-use bevy_pg_core::prelude::{TerrainChunk, GameStatePlay, rotate_point_2d};
-use bevy_pg_nav::prelude::NavConfig;
+use bevy_pg_core::prelude::GameStatePlay;
 use bevy_pg_scenes::prelude::{Spawner, Marker, PlaneToEdit};
 
 use crate::assets_panel::EditorAssetPanel;
@@ -27,7 +26,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(unghost_all)
         .add_observer(on_fire_unghost_all)
         .add_observer(delete_object)
-        .add_observer(toggle_navmesh_debug)
         .add_observer(toggle_markers_vis)
         .add_observer(toggle_spawners_vis)
         .add_observer(toggle_nav_snap)
@@ -40,13 +38,6 @@ impl Plugin for PGEditorControllerPlugin {
         .add_observer(change_editor_mode)
         ;
     }
-}
-
-fn toggle_navmesh_debug(
-    trigger: On<ToggleNavmeshDebug>,
-    mut navconfig:  ResMut<NavConfig>
-){
-    navconfig.debug = trigger.value;
 }
 
 fn change_editor_mode(
@@ -432,11 +423,6 @@ pub struct TurnOffEditor;
 //         }
 //     }
 // }
-
-#[derive(Event)]
-pub struct ToggleNavmeshDebug {
-    pub value: bool
-}
 
 #[derive(InputAction)]
 #[action_output(bool)]
