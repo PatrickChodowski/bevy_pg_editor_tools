@@ -475,6 +475,7 @@ fn save_scene(
             Option<&Markee>,
             Option<&Spawner>,
             Option<&Marker>,
+            Option<&WaterChunk>
         ),
         Or<(With<Static>, With<Ghost>, With<EditorAsset>)>,
     >, // All of it Just in case :)
@@ -491,7 +492,7 @@ fn save_scene(
 
     let mut sods: HashMap<Name, Vec<SceneObjectData>> = HashMap::new();
 
-    for (transform, name, maybe_markee, maybe_spawner, _maybe_marker) in objects.iter() {
+    for (transform, name, maybe_markee, maybe_spawner, _maybe_marker, maybe_water) in objects.iter() {
         if maybe_markee.is_some() {
             continue;
         }
@@ -512,10 +513,15 @@ fn save_scene(
         //     }
         // }
 
+        let mut scale = transform.scale;
+        if let Some(water) = maybe_water {
+            scale = Vec3::new(water.dims.x, 1.0, water.dims.y); 
+        }
+
         let sod = SceneObjectData {
             location: transform.translation - plane_transform.translation, // Adjust to origin (plane translation is an origin for a chunk)
             rotation: transform.rotation.to_euler(EulerRot::XYZ).into(),
-            scale: transform.scale,
+            scale: scale,
             data,
         };
         sods.entry(name.clone()).or_insert(Vec::new()).push(sod);
