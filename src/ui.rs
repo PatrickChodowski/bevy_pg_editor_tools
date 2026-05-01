@@ -12,7 +12,7 @@ use bevy::ui_widgets::{
 };
 use bevy::feathers::dark_theme::create_dark_theme;
 use bevy_pg_core::prelude::GameStatePlay;
-// use bevy_pg_nav::prelude::NavConfig;
+use bevy_pg_nav::prelude::NavResources;
 
 use crate::controller::{TogglePlaneWireframe, TogglePlaneApplyToAll};
 use crate::prelude::{
@@ -64,7 +64,8 @@ pub struct EditorControlsPanel;
 
 fn init_editor_ui(
     mut commands:       Commands,
-    editor_settings:    Res<EditorSettings>
+    editor_settings:    Res<EditorSettings>,
+    navres:             Res<NavResources>
 ){
     info!(" [EDITOR] Init UI");
     commands.insert_resource(UiTheme(create_dark_theme()));
@@ -97,6 +98,7 @@ fn init_editor_ui(
         label_section(&mut commands, "Scene Settings"),
         ghost_checkboxes1(&mut commands, &editor_settings),
         ghost_checkboxes2(&mut commands, &editor_settings),
+        nav_checkbox(&mut commands, &navres),
         empty_row(&mut commands, 15.0),
         label_section(&mut commands, "Brush Settings"),
         brush_radio(&mut commands, &editor_settings),
@@ -676,6 +678,62 @@ fn ghost_checkboxes2(
     return local_root;
 
 }
+
+
+
+
+fn nav_checkbox(
+    commands:   &mut Commands, 
+    navres:     &Res<NavResources>
+) -> Entity {
+
+    let local_root = commands.spawn(
+        (
+            Node {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Start,
+                column_gap: px(8),
+                ..default()
+            },
+            PlaneControls
+        )
+    ).id();
+
+    let entity3 = if navres.visible {
+        commands.spawn(checkbox((Checked, PlaneControls, EditorControls), Spawn((Text::new("Toggle Navmesh Visibility"), ThemedText)))).id()
+    } else {
+        commands.spawn(checkbox((PlaneControls, EditorControls), Spawn((Text::new("Toggle Navmesh Visibility"), ThemedText)))).id()
+    };
+    commands.entity(entity3).insert(
+        observe(
+            |change: On<ValueChange<bool>>, mut commands: Commands, mut navres: ResMut<NavResources>| {
+                let mut checkbox = commands.entity(change.source);
+                if change.value {
+                    checkbox.insert(Checked);
+                    navres.visible = true;
+                } else {
+                    checkbox.remove::<Checked>();
+                    navres.visible = false;
+                }
+            }
+        )   
+    );
+    commands.entity(local_root).add_children(
+        &vec![
+        entity3, 
+        ]);
+    return local_root;
+
+}
+
+
+
+
+
+
+
 
 
 
