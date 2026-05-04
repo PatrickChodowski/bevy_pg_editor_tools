@@ -217,7 +217,6 @@ fn toggle_ghost(
                     }
                     EditorMode::Scene => {
                         if let Ok(_) = editor_assets.get(trigger.entity){
-                            info!("it is editor asset at least...");
                             if let Ok(data) = query.get(trigger.entity){
                                 Some(data)
                             } else {
@@ -627,7 +626,6 @@ fn add_editor_asset(
     mut materials: ResMut<Assets<StandardMaterial>>,
     water_data: Res<WaterData>
 ){
-    info!("added editor asset to {}", trigger.entity);
     let entity = trigger.entity;
     let Ok((asset, maybe_spawner, maybe_marker, maybe_water)) = query.get(entity) else {return};
     match asset {
