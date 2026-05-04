@@ -8,11 +8,12 @@ use std::f32::consts::FRAC_PI_2;
 use dyn_clone::DynClone;
 use rand::Rng;
 use rand::seq::IndexedRandom;
+use bevy_pg_core::prelude::EditorAsset;
 
 use crate::editor_pointer::EditorPointer;
 use crate::prelude::{EditorMode, EditorSettings};
 use crate::tracker::{Changes, Change, ChangesSet, ChangeSpawn};
-use crate::ghost::{EditorAsset, EditorGhostSettings, Ghost, editor_asset_bundle};
+use crate::ghost::{EditorGhostSettings, Ghost, editor_asset_bundle};
 
 
 pub struct PGEditorBrushSelectPlugin;

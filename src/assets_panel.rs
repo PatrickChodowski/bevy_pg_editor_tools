@@ -7,10 +7,9 @@ use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy_seedling::sample::OnComplete;
 use bevy_simple_text_input::{TextInputSystem, TextInputValue};
 use bevy_seedling::prelude::{SamplePlayer, Volume, PlaybackSettings};
-use bevy_pg_core::prelude::GameStatePlay;
+use bevy_pg_core::prelude::{GameStatePlay, EditorAsset};
 
 use crate::ghost::EditorSpawnAsset;
-use crate::ghost::EditorAsset;
 use crate::ghost::EditorGhostTransformMemory;
 use crate::text_inputs::text_input_field;
 

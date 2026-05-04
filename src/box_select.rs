@@ -1,10 +1,10 @@
 use bevy::{color::palettes::tailwind::{ORANGE_700}, prelude::*};
-use bevy_pg_core::prelude::AABB;
+use bevy_pg_core::prelude::{AABB, EditorAsset};
 use bevy_pg_scenes::prelude::PlaneToEdit;
 use libm::fabsf;
 
 use crate::editor_pointer::EditorPointer;
-use crate::ghost::{EditorAsset, Ghost, GhostMark};
+use crate::ghost::{Ghost, GhostMark};
 use crate::EditorSettings;
 use crate::prelude::EditorMode;
 

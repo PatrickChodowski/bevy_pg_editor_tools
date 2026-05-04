@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use bevy::ecs::system::SystemState;
 use bevy_enhanced_input::prelude::*;
 use bevy::platform::collections::HashMap;
+use bevy_pg_core::prelude::EditorAsset;
 
-use crate::ghost::{EditorAsset, EditorGhostSettings, editor_asset_bundle};
+use crate::ghost::{EditorGhostSettings, editor_asset_bundle};
 use crate::planes::plane_mesh;
 use crate::vertex::PlaneVertex;
 pub struct PGEditorTrackerPlugin;

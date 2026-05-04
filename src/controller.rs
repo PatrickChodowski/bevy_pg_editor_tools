@@ -3,12 +3,12 @@ use bevy::prelude::*;
 use bevy::ui::InteractionDisabled;
 use bevy_enhanced_input::prelude::*;
 use bevy_enhanced_input::prelude::Press;
-use bevy_pg_core::prelude::GameStatePlay;
+use bevy_pg_core::prelude::{GameStatePlay, EditorAsset};
 use bevy_pg_scenes::prelude::{Spawner, Marker, PlaneToEdit};
 
 use crate::assets_panel::EditorAssetPanel;
 use crate::tracker::{Change, ChangeDespawn, Changes, ChangesSet, Redo, Undo};
-use crate::ghost::{EditorAsset, Ghost};
+use crate::ghost::Ghost;
 use crate::transform_gizmo::{TransformGizmoConfig, TransformGizmoFocus, TransformGizmoMode};
 use crate::ui::{BrushControls, EditorControlsPanel, PlaneControls, SceneControls, EditorControls};
 use crate::settings::{EditorMode, EditorSettings};

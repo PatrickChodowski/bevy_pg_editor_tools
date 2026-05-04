@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashMap;
 use bevy_pg_scenes::prelude::{Spawner, Marker, Markee, Spawnee, Static, PlaneToEdit};
-use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk};
+use bevy_pg_core::prelude::{GameStatePlay, MainCamera, Player, TerrainChunk, EditorAsset};
 use bevy_enhanced_input::prelude::ContextActivity;
-use bevy_infinite_grid::{InfiniteGridPlugin, InfiniteGridBundle};
+use bevy_infinite_grid::{InfiniteGrid, InfiniteGridBundle, InfiniteGridPlugin};
 use bevy::pbr::wireframe::WireframePlugin;
 
 pub mod assets_panel;
@@ -31,7 +31,7 @@ use brushes::{PGEditorBrushSelectPlugin};
 use box_select::PGEditorBoxSelectPlugin;
 use controller::{PGEditorControllerPlugin, EditorController};
 use editor_pointer::PGEditorPointer;
-use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorAsset, EditorGhostTransformMemory};
+use ghost::{PGEditorGhostPlugin, EditorGhostSettings, EditorGhostTransformMemory};
 use planes::PGEditorPlanesPlugin;
 use plane_loader::PGEditorLoadPlanePlugin;
 use settings::EditorSettings;
@@ -205,6 +205,7 @@ fn exit_editor(
     spawners_markers: Query<Entity, Or<(With<Spawner>, With<Marker>)>>,
     player: Query<&Transform, With<Player>>,
     terrains: Query<Entity, With<TerrainChunk>>,
+    grid:     Query<Entity, With<InfiniteGrid>>
 ) {
     info!("[EDITOR] Exit Editor");
 
@@ -258,6 +259,10 @@ fn exit_editor(
             .entity(spawner_marker_entity)
             .remove::<EditorAsset>();
     }
+
+    for entity in grid.iter(){
+        commands.entity(entity).despawn();
+    }
 }
 
 
@@ -275,7 +280,7 @@ pub mod prelude {
         ChangeEditorMode, UnghostAll, TriggerThumbnails, ToggleEditorPanel, ToggleAssetsPanel
     };
     pub use crate::ghost::{
-        PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, EditorAsset, 
+        PGEditorGhostPlugin, EditorGhostTransformMemory, Ghost, 
     };
     pub use crate::thumbnails::PGEditorThumbnailsPlugin;
     pub use crate::tracker::{

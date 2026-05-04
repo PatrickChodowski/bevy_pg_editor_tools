@@ -5,12 +5,11 @@ use bevy::picking::pointer::PointerId;
 use bevy::prelude::*;
 use bevy::prelude::Press;
 use bevy::tasks::IoTaskPool;
-use serde::{Serialize, Deserialize};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use std::f32::consts::FRAC_PI_2;
-use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB, WaterChunk};
+use bevy_pg_core::prelude::{GameState, GameStatePlay, AABB, WaterChunk, EditorAsset};
 use bevy_pg_scenes::prelude::{Spawner, Marker, AssetSource, AssignComponents, SceneObjectData, SceneData, Markee, PlaneToEdit, Static, WaterData, spawn_water, water_mm};
 
 use crate::prelude::{EditorMode, EditorSettings};
@@ -148,7 +147,8 @@ fn toggle_ghost(
     trigger:            On<Pointer<Press>>,
     mut commands:       Commands,
     query:              Query<(Entity, &MeshMaterial3d<StandardMaterial>, Option<&Ghost>, Option<&TransformGizmoFocus>)>,
-    assets:             Query<&Static>,
+    editor_assets:      Query<&EditorAsset>,
+    names:              Query<&Name>,
     planes:             Query<&PlaneToEdit>,
     focus:              Query<Entity, With<TransformGizmoFocus>>,
     ghosts:             Query<Entity, With<Ghost>>,
@@ -183,6 +183,11 @@ fn toggle_ghost(
 
     if trigger.pointer_id == PointerId::Mouse {
         if trigger.button == PointerButton::Primary {
+            
+
+            // if let Ok(name) = names.get(trigger.entity){
+            //     info!("Toggle ghost Pressed {} name: {}", trigger.entity, name);
+            // }
 
             if unghost_all {
                 for focus_entity in focus.iter(){
@@ -211,7 +216,8 @@ fn toggle_ghost(
                         } else {None}
                     }
                     EditorMode::Scene => {
-                        if let Ok(_) = assets.get(trigger.entity){
+                        if let Ok(_) = editor_assets.get(trigger.entity){
+                            info!("it is editor asset at least...");
                             if let Ok(data) = query.get(trigger.entity){
                                 Some(data)
                             } else {
@@ -544,15 +550,6 @@ fn save_scene(
         .detach();
 }
 
-
-#[derive(Component, Clone, Debug, Serialize, Deserialize)]
-pub enum EditorAsset {
-    Asset(String),
-    Spawner (String),
-    Marker(String),
-    Water
-}
-
 pub(super) fn editor_asset_bundle(
     asset:      EditorAsset,
     ass:        &AssetServer,
@@ -630,6 +627,7 @@ fn add_editor_asset(
     mut materials: ResMut<Assets<StandardMaterial>>,
     water_data: Res<WaterData>
 ){
+    info!("added editor asset to {}", trigger.entity);
     let entity = trigger.entity;
     let Ok((asset, maybe_spawner, maybe_marker, maybe_water)) = query.get(entity) else {return};
     match asset {
